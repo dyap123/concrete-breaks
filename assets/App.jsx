@@ -134,9 +134,9 @@ function App() {
   /* ---- Alfred can drive the app (navigation directives from chat) ---- */
   const alfredCommand = useCbApp((c) => {
     if (c.k === 'go') {
-      const map = { dashboard: 'records', records: 'records', mixes: 'mixes', leaderboard: 'leaderboard', mix: 'mix', log: 'mix', new: 'mix' };
+      const map = { dashboard: 'records', records: 'records', mixes: 'mixes', reports: 'reports', leaderboard: 'leaderboard', mix: 'mix', log: 'mix', new: 'mix' };
       const v = map[(c.v || '').toLowerCase()] || c.v;
-      if (['mix', 'records', 'mixes', 'leaderboard'].includes(v)) { setView(v); flash('Alfred → ' + (v === 'records' ? 'Dashboard' : v === 'mix' ? 'New record' : v.charAt(0).toUpperCase() + v.slice(1))); }
+      if (['mix', 'records', 'mixes', 'reports', 'leaderboard'].includes(v)) { setView(v); flash('Alfred → ' + (v === 'records' ? 'Dashboard' : v === 'mix' ? 'New record' : v.charAt(0).toUpperCase() + v.slice(1))); }
     } else if (c.k === 'log') {
       const m = mixes.find((x) => x.code.toLowerCase() === (c.v || '').toLowerCase());
       if (m) { startEntry(m); flash('Alfred opened a record · ' + m.code); }
@@ -201,6 +201,7 @@ function App() {
           <RailBtn active={view === 'mix' || view === 'entry'} icon="✦" label="New record" onClick={gotoMix} />
           <RailBtn active={view === 'records'} icon="▤" label="Dashboard" badge={entries.length} onClick={() => setView('records')} />
           <RailBtn active={view === 'mixes'} icon="◆" label="Mix designs" onClick={() => setView('mixes')} />
+          <RailBtn active={view === 'reports'} icon="⭳" label="Reports" onClick={() => setView('reports')} />
           <RailBtn active={view === 'leaderboard'} icon="★" label="Leaderboard" onClick={() => setView('leaderboard')} />
         </div>
 
@@ -235,6 +236,9 @@ function App() {
         )}
         {view === 'mixes' && (
           <MixManager mixes={mixes} counts={counts} onSave={saveMix} onDelete={deleteMix} onAdd={addMix} />
+        )}
+        {view === 'reports' && (
+          <window.ReportsView mixes={mixes} entries={entries} />
         )}
         {view === 'leaderboard' && (
           <window.Leaderboard users={users} entries={entries} currentId={currentId} onLog={gotoMix}
