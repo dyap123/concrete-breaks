@@ -263,41 +263,59 @@ function ageAvg(entries, code, age) {
 function DashCharts({ entries, mixes }) {
   const logged = [...new Set(entries.map((e) => e.mix).filter(Boolean))];
   const [sel, setSel] = React.useState(logged[0] || '');
+  const [cmp, setCmp] = React.useState(logged);
   React.useEffect(() => { if (!logged.includes(sel) && logged[0]) setSel(logged[0]); }, [logged.join()]);
+  React.useEffect(() => { setCmp((p) => { const f = p.filter((c) => logged.includes(c)); return f.length ? f : logged; }); }, [logged.join()]);
   if (!entries.length) return null;
   const ages = (() => { const s = new Set(); entries.forEach((e) => window.entryAges(e).forEach((a) => s.add(a))); window.BREAK_AGES.forEach((a) => s.add(a)); return [...s].sort((x, y) => x - y); })();
-  const labels = ages.map((a) => a + 'd');
+  const labels = ages.map((a) => a + '-day');
   const selMix = mixes.find((m) => m.code === sel);
   const fc = selMix && selMix.fc;
-  const barData = {
-    labels,
-    datasets: [
-      { label: sel + ' avg', data: ages.map((a) => ageAvg(entries, sel, a)), backgroundColor: window.mixColor(selMix), borderRadius: 6 },
-      ...(fc ? [{ label: "Design f'c", data: ages.map(() => fc), type: 'line', borderColor: 'oklch(.82 .14 70)', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }] : []),
-    ],
+  const single = ages.map((a) => ageAvg(entries, sel, a));
+  const gridY = { y: { title: { display: true, text: 'psi', color: '#6b75a8' }, ticks: { callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(120,140,230,.07)' } }, x: { grid: { display: false } } };
+  const barData = { labels, datasets: [{ label: 'Avg strength', data: single, backgroundColor: window.strengthBarColor(single, fc), borderRadius: 8, maxBarThickness: 72 }] };
+  const barOpts = {
+    plugins: { legend: { display: false }, fcLine: { value: fc || 0 },
+      tooltip: { callbacks: { label: (c) => ` ${(c.parsed.y || 0).toLocaleString()} psi` + (fc ? `  ·  ${Math.round(c.parsed.y / fc * 100)}% f'c` : '') } } },
+    scales: gridY,
   };
+  const toggle = (code) => setCmp((p) => p.includes(code) ? (p.length > 1 ? p.filter((c) => c !== code) : p) : [...p, code]);
   const cmpData = {
     labels,
-    datasets: logged.map((code) => {
-      const m = mixes.find((x) => x.code === code);
-      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: window.mixColor(m), backgroundColor: window.mixColor(m), tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2 };
-    }),
+    datasets: cmp.map((code) => { const m = mixes.find((x) => x.code === code); const col = window.mixColor(m);
+      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: col, backgroundColor: col, tension: 0.35, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, fill: false }; }),
   };
-  const yPsi = { y: { title: { display: true, text: 'psi' }, ticks: { callback: (v) => v.toLocaleString() } } };
+  const cmpOpts = {
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${(c.parsed.y || 0).toLocaleString()} psi` } } },
+    scales: gridY, interaction: { mode: 'index', intersect: false },
+  };
   return (
     <div className="dash-charts fadeUp">
       <div className="dash-chart glass">
         <div className="dash-chart-head">
-          <h3 className="disp">Strength by age</h3>
+          <div><div className="dash-eyebrow mono">◇ STRENGTH BY AGE</div><h3 className="disp">{sel || '—'}{fc ? <span className="dash-fc mono"> · f'c {fc.toLocaleString()}</span> : ''}</h3></div>
           <select className="dash-sel mono" value={sel} onChange={(e) => setSel(e.target.value)}>
             {logged.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <window.ChartCanvas type="bar" data={barData} options={{ plugins: { legend: { display: true, position: 'bottom' } }, scales: yPsi }} height={240} />
+        <window.ChartCanvas type="bar" data={barData} options={barOpts} height={360} />
+        <div className="dash-legend mono"><span className="dl ok">≥100% f'c</span><span className="dl mid">85–99%</span><span className="dl low">below 85%</span></div>
       </div>
+
       <div className="dash-chart glass">
-        <div className="dash-chart-head"><h3 className="disp">Compare mixes</h3><span className="dash-sub mono">avg strength by age</span></div>
-        <window.ChartCanvas type="line" data={cmpData} options={{ plugins: { legend: { display: true, position: 'bottom' } }, scales: yPsi }} height={240} />
+        <div className="dash-chart-head">
+          <div><div className="dash-eyebrow mono">◇ COMPARE</div><h3 className="disp">Mix comparison</h3></div>
+          <span className="dash-sub mono">avg strength by age</span>
+        </div>
+        <div className="cmp-chips">
+          {logged.map((code) => { const m = mixes.find((x) => x.code === code); const on = cmp.includes(code);
+            return (
+              <button key={code} className={'cmp-chip' + (on ? ' on' : '')} style={{ '--c': window.mixColor(m) }} onClick={() => toggle(code)}>
+                <span className="cmp-dot"></span>{code}
+              </button>
+            ); })}
+        </div>
+        <window.ChartCanvas type="line" data={cmpData} options={cmpOpts} height={360} />
       </div>
     </div>
   );
@@ -554,15 +572,32 @@ function AppStyles() {
     .rec-empty-title{font-size:20px;}
     .rec-empty p{max-width:420px;margin:0;color:var(--ink-dim);font-size:14px;line-height:1.6;}
     .rec-empty .btn-primary{margin-top:6px;}
-    .dash-charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px;}
-    .dash-chart{border-radius:var(--r-lg);padding:16px 18px;border-color:var(--line-strong);}
-    .dash-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;}
-    .dash-chart-head h3{font-size:14px;font-weight:600;margin:0;color:var(--ink);}
-    .dash-sub{font-size:10px;color:var(--ink-faint);}
-    .dash-sel{background:rgba(8,12,28,.6);border:1px solid var(--line-strong);border-radius:8px;
-      color:var(--cyan);font-size:12px;padding:6px 10px;outline:none;cursor:pointer;}
+    .dash-charts{display:flex;flex-direction:column;gap:20px;margin-bottom:30px;}
+    .dash-chart{border-radius:var(--r-lg);padding:22px 24px;border-color:var(--line-strong);
+      box-shadow:var(--shadow),0 0 60px -36px var(--glow-cyan);}
+    .dash-chart-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;}
+    .dash-eyebrow{font-size:10px;letter-spacing:.2em;color:var(--cyan);margin-bottom:6px;}
+    .dash-chart-head h3{font-size:20px;font-weight:600;margin:0;color:var(--ink);letter-spacing:-.01em;}
+    .dash-fc{font-size:13px;color:var(--ink-faint);font-weight:400;}
+    .dash-sub{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+    .dash-sel{background:rgba(8,12,28,.6);border:1px solid var(--line-strong);border-radius:9px;
+      color:var(--cyan);font-size:13px;padding:8px 12px;outline:none;cursor:pointer;font-weight:600;}
     .dash-sel option{background:#0e1533;color:var(--ink);}
-    @media (max-width:860px){.dash-charts{grid-template-columns:1fr;}}
+    .dash-legend{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:10.5px;}
+    .dash-legend .dl{display:flex;align-items:center;gap:6px;color:var(--ink-faint);}
+    .dash-legend .dl::before{content:'';width:9px;height:9px;border-radius:3px;}
+    .dash-legend .ok::before{background:oklch(.78 .15 155);}
+    .dash-legend .mid::before{background:oklch(.82 .14 70);}
+    .dash-legend .low::before{background:oklch(.68 .19 18);}
+    .cmp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+    .cmp-chip{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink-faint);
+      padding:7px 13px;border-radius:99px;background:rgba(8,12,28,.4);border:1px solid var(--line);
+      font-family:var(--font-m);transition:.14s;}
+    .cmp-chip .cmp-dot{width:9px;height:9px;border-radius:50%;background:var(--c);opacity:.4;transition:.14s;}
+    .cmp-chip:hover{color:var(--ink-dim);border-color:var(--line-strong);}
+    .cmp-chip.on{color:var(--ink);border-color:var(--c);background:color-mix(in oklch,var(--c) 12%,transparent);
+      box-shadow:0 0 16px -8px var(--c);}
+    .cmp-chip.on .cmp-dot{opacity:1;box-shadow:0 0 8px var(--c);}
     .rec-list{display:flex;flex-direction:column;gap:12px;}
     .rec-card{position:relative;display:grid;
       grid-template-columns:160px 1fr auto auto;gap:18px;align-items:center;
