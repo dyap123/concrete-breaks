@@ -473,39 +473,8 @@ function FormStyles() {
     .brk-rmage{width:22px;height:22px;border-radius:6px;background:rgba(8,12,28,.5);border:1px solid var(--line);
       color:var(--ink-faint);font-size:12px;}
     .brk-rmage:hover{color:var(--red);border-color:var(--red);}
-    /* custom date picker */
-    .df{position:relative;}
-    .df.compact .df-btn{padding:7px 10px;font-size:12px;}
-    .df-btn{width:100%;display:flex;align-items:center;gap:8px;background:rgba(8,12,28,.6);
-      border:1px solid var(--line);border-radius:9px;padding:10px 11px;color:var(--ink);font-size:13px;
-      transition:border-color .15s,box-shadow .15s;text-align:left;}
-    .df-btn:hover{border-color:var(--line-strong);}
-    .df-btn:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 3px oklch(.8 .13 205/.12);}
-    .df-btn.empty .df-val{color:var(--ink-faint);}
-    .df-ic{color:var(--cyan);font-size:13px;}
-    .df-val{font-size:12.5px;}
-    .df-backdrop{position:fixed;inset:0;z-index:60;}
-    .df-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:61;width:238px;border-radius:var(--r-md);
-      padding:12px;border-color:var(--line-strong);box-shadow:var(--shadow);animation:popIn .16s both;}
-    .df-pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
-    .df-month{font-size:13px;color:var(--ink);}
-    .df-nav{width:26px;height:26px;border-radius:7px;background:rgba(8,12,28,.5);border:1px solid var(--line);
-      color:var(--ink-dim);font-size:15px;line-height:1;}
-    .df-nav:hover{color:var(--ink);border-color:var(--cyan);}
-    .df-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
-    .df-dow span{text-align:center;font-size:9px;color:var(--ink-faint);}
-    .df-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-    .df-cell{height:28px;border-radius:7px;background:none;border:1px solid transparent;color:var(--ink-dim);
-      font-size:12px;transition:.1s;}
-    .df-cell:hover{background:oklch(.8 .13 205/.12);color:var(--ink);}
-    .df-cell.empty{background:none;cursor:default;}
-    .df-cell.today{border-color:var(--line-strong);color:var(--ink);}
-    .df-cell.sel{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#06122a;font-weight:600;}
-    .df-foot{display:flex;gap:7px;margin-top:9px;}
-    .df-act{flex:1;font-size:11px;color:var(--ink-dim);background:rgba(8,12,28,.5);border:1px solid var(--line);
-      border-radius:8px;padding:7px;transition:.12s;}
-    .df-act:hover{color:var(--ink);border-color:var(--cyan);}
-    .df-act.clear:hover{color:var(--red);border-color:var(--red);}
+    /* (date-picker .df-* styles live in the global stylesheet in index.html — the
+        popover is portaled to <body>, so its CSS must be global, not scoped here) */
     .brk-avg{font-size:17px;color:var(--ink);font-weight:500;}
     .brk-avglab{font-size:8.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;}
     .brk-foot{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap;}
