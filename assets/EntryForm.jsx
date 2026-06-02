@@ -43,10 +43,11 @@ function DateField({ value, onChange, compact }) {
       <button type="button" className={'df-btn' + (sel ? '' : ' empty')} onClick={() => setOpen((o) => !o)}>
         <span className="df-ic">◷</span><span className="df-val mono">{label}</span>
       </button>
-      {open && (
+      {open && ReactDOM.createPortal(
         <>
-          <div className="df-backdrop" onClick={() => setOpen(false)}></div>
-          <div className="df-pop glass">
+          {/* tap anywhere outside the calendar closes it */}
+          <div className="df-backdrop" onClick={() => setOpen(false)} onPointerDown={() => setOpen(false)}></div>
+          <div className="df-pop glass" onPointerDown={(e) => e.stopPropagation()}>
             <div className="df-pop-head">
               <button type="button" className="df-nav" onClick={() => shift(-1)}>‹</button>
               <span className="df-month disp">{monthName}</span>
@@ -65,7 +66,8 @@ function DateField({ value, onChange, compact }) {
               <button type="button" className="df-act" onClick={() => setOpen(false)}>Close</button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
