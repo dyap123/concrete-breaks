@@ -291,17 +291,20 @@ function ageAvg(entries, code, age) {
 }
 function DashCharts({ entries, mixes }) {
   const all = mixes.map((m) => m.code);
-  const logged = [...new Set(entries.map((e) => e.mix).filter(Boolean))];
-  const [sel, setSel] = React.useState(logged[0] || all[0] || '');
-  const [cmp, setCmp] = React.useState(logged.length ? logged : all.slice(0, 4));
+  const [from, setFrom] = React.useState('');
+  const [to, setTo] = React.useState('');
+  const fent = entries.filter((e) => (!from || (e.pourDate || '') >= from) && (!to || (e.pourDate || '') <= to));
+  const logged = [...new Set(fent.map((e) => e.mix).filter(Boolean))];
+  const [sel, setSel] = React.useState(all[0] || '');
+  const [cmp, setCmp] = React.useState(all.slice(0, 4));
   React.useEffect(() => { if (!all.includes(sel) && all[0]) setSel(all[0]); }, [all.join()]);
-  React.useEffect(() => { setCmp((p) => { const f = p.filter((c) => all.includes(c)); return f.length ? f : (logged.length ? logged : all.slice(0, 4)); }); }, [all.join()]);
+  React.useEffect(() => { setCmp((p) => { const f = p.filter((c) => all.includes(c)); return f.length ? f : all.slice(0, 4); }); }, [all.join()]);
   if (!entries.length) return null;
-  const ages = (() => { const s = new Set(); entries.forEach((e) => window.entryAges(e).forEach((a) => s.add(a))); window.BREAK_AGES.forEach((a) => s.add(a)); return [...s].sort((x, y) => x - y); })();
+  const ages = (() => { const s = new Set(); fent.forEach((e) => window.entryAges(e).forEach((a) => s.add(a))); window.BREAK_AGES.forEach((a) => s.add(a)); return [...s].sort((x, y) => x - y); })();
   const labels = ages.map((a) => a + '-day');
   const selMix = mixes.find((m) => m.code === sel);
   const fc = selMix && selMix.fc;
-  const single = ages.map((a) => ageAvg(entries, sel, a));
+  const single = ages.map((a) => ageAvg(fent, sel, a));
   const gridY = { y: { title: { display: true, text: 'psi', color: '#6b75a8' }, ticks: { callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(120,140,230,.07)' } }, x: { grid: { display: false } } };
   // headroom so the design f'c reference line is never clipped above the axis
   const vals = single.filter((v) => v != null);
@@ -320,7 +323,7 @@ function DashCharts({ entries, mixes }) {
   const cmpData = {
     labels,
     datasets: cmp.map((code) => { const col = colorFor(code);
-      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: col, backgroundColor: window.lineAreaGrad(col), pointBackgroundColor: col, pointBorderColor: '#0a0f22', pointBorderWidth: 1.5, tension: 0.4, spanGaps: true, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3, fill: true }; }),
+      return { label: code, data: ages.map((a) => ageAvg(fent, code, a)), borderColor: col, backgroundColor: window.lineAreaGrad(col), pointBackgroundColor: col, pointBorderColor: '#0a0f22', pointBorderWidth: 1.5, tension: 0.4, spanGaps: true, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3, fill: true }; }),
   };
   const cmpOpts = {
     plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${(c.parsed.y || 0).toLocaleString()} psi` } } },
@@ -328,6 +331,14 @@ function DashCharts({ entries, mixes }) {
   };
   return (
     <div className="dash-charts fadeUp">
+      <div className="dash-daterange">
+        <span className="dash-dr-lbl mono">POUR DATE RANGE</span>
+        <window.DateField value={from} onChange={setFrom} compact />
+        <span className="dash-dr-sep">→</span>
+        <window.DateField value={to} onChange={setTo} compact />
+        {(from || to) && <button className="dash-dr-clear mono" onClick={() => { setFrom(''); setTo(''); }}>✕ clear</button>}
+        <span className="dash-dr-count mono">{fent.length} of {entries.length} records</span>
+      </div>
       <div className="dash-chart glass">
         <div className="dash-chart-head">
           <div><div className="dash-eyebrow mono">◇ STRENGTH BY AGE</div><h3 className="disp">{sel || '—'}{fc ? <span className="dash-fc mono"> · f'c {fc.toLocaleString()}</span> : ''}</h3></div>
@@ -673,6 +684,15 @@ function AppStyles() {
     .rec-empty p{max-width:420px;margin:0;color:var(--ink-dim);font-size:14px;line-height:1.6;}
     .rec-empty .btn-primary{margin-top:6px;}
     .dash-charts{display:flex;flex-direction:column;gap:20px;margin-bottom:30px;}
+    .dash-daterange{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;
+      border-radius:var(--r-md);background:rgba(13,19,44,.5);border:1px solid var(--line-strong);}
+    .dash-dr-lbl{font-size:10px;letter-spacing:.12em;color:var(--cyan);}
+    .dash-daterange .df{min-width:150px;}
+    .dash-dr-sep{color:var(--ink-faint);font-size:13px;}
+    .dash-dr-clear{font-size:11px;color:var(--ink-dim);background:rgba(8,12,28,.5);border:1px solid var(--line);
+      border-radius:8px;padding:6px 11px;transition:.14s;}
+    .dash-dr-clear:hover{color:var(--red);border-color:var(--red);}
+    .dash-dr-count{margin-left:auto;font-size:10.5px;color:var(--ink-faint);}
     .dash-chart{border-radius:var(--r-lg);padding:22px 24px;border-color:var(--line-strong);}
     .dash-chart-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;}
     .dash-eyebrow{font-size:10px;letter-spacing:.2em;color:var(--cyan);margin-bottom:6px;}

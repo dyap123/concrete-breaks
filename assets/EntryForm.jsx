@@ -327,7 +327,6 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
               </Field>
               <div className="ef-toggles">
                 <Toggle on={entry.ncr} onClick={() => set('ncr', !entry.ncr)} label="NCR raised" tone="warn" />
-                <Toggle on={entry.graphed} onClick={() => set('graphed', !entry.graphed)} label="Graphed" tone="ok" />
               </div>
             </Section>
 
@@ -537,4 +536,4 @@ function FormStyles() {
   `}</style>;
 }
 
-Object.assign(window, { EntryForm });
+Object.assign(window, { EntryForm, DateField });

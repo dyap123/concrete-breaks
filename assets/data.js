@@ -205,7 +205,6 @@ function blankEntry(mix) {
     air: 'N/I',
     actualWC: '',
     ncr: false,
-    graphed: false,
     comments: '',
     admx: {},
   };
@@ -234,7 +233,7 @@ function entriesToCSV(entries, admixtures) {
     entries.forEach((e) => { maxCyl[age] = Math.max(maxCyl[age], cylArr(e, age).length); });
   });
   const cols = [
-    ['NCR?', (e) => e.ncr ? 'YES' : ''], ['Graphed?', (e) => e.graphed ? 'YES' : ''],
+    ['NCR?', (e) => e.ncr ? 'YES' : ''],
     ['Pour Number', (e) => e.pourNumber], ['Pour Date', (e) => e.pourDate],
     ['IR#', (e) => e.ir], ['Batch Ticket #', (e) => e.ticket],
     ['Area', (e) => e.area], ['Sequence', (e) => e.sequence], ['Element', (e) => e.element],
