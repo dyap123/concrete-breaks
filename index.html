@@ -1,1087 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0a0e14">
-<title>Break Lab — Concrete Cylinder Tracker</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a0e14'/><rect x='10' y='7' width='12' height='18' rx='2' fill='none' stroke='%232EBE7E' stroke-width='2'/><path d='M10 18 L22 18' stroke='%23F0A852' stroke-width='2'/><circle cx='16' cy='13' r='2' fill='%234A8EFF'/></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,200..700,0..1,-50..200&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orbital — Concrete Break Logger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
 :root{
-  --bg:#0a0e14; --bg2:#0d1219; --card:rgba(255,255,255,0.03); --card2:rgba(255,255,255,0.05);
-  --card-border:rgba(255,255,255,0.08); --card-hover:rgba(255,255,255,0.16);
-  --text:#eef2f6; --text-body:#c3ccd6; --text-muted:#7c8794;
-  --green:#2EBE7E; --amber:#F0A852; --blue:#4A8EFF; --purple:#8B5CF6; --red:#FF4D6D; --cyan:#22d3ee;
-  --accent1:#2EBE7E; --accent2:#4A8EFF; --accent3:#8B5CF6;
-  --glow-green:rgba(46,190,126,0.35); --glow-pink:rgba(255,77,109,0.35);
-  --font-en:'Inter',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
-  --ease:cubic-bezier(.16,1,.3,1); --r:14px; --r-lg:20px;
+  --space-950:#060a18;
+  --space-900:#0a0f22;
+  --space-850:#0d1430;
+  --space-800:#121a3a;
+  --space-700:#1a2350;
+  --line:rgba(120,140,230,.16);
+  --line-strong:rgba(140,165,255,.30);
+  --panel:rgba(16,23,52,.62);
+  --panel-solid:#0e1533;
+  --ink:#e8ecff;
+  --ink-dim:#aab2dd;
+  --ink-faint:#6b75a8;
+  --cyan:oklch(.80 .13 205);
+  --violet:oklch(.72 .16 290);
+  --magenta:oklch(.72 .19 330);
+  --blue:oklch(.72 .15 255);
+  --green:oklch(.80 .15 155);
+  --amber:oklch(.82 .14 70);
+  --red:oklch(.68 .19 18);
+  --glow-cyan:oklch(.80 .13 205 / .45);
+  --r-lg:18px; --r-md:13px; --r-sm:9px;
+  --shadow:0 18px 48px -22px rgba(0,0,0,.85);
+  --font-d:'Space Grotesk',system-ui,sans-serif;
+  --font-b:'IBM Plex Sans',system-ui,sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,monospace;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
-body{font-family:var(--font-en);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
-  background-image:radial-gradient(1200px 600px at 80% -10%,rgba(74,142,255,0.10),transparent),radial-gradient(1000px 500px at -10% 110%,rgba(46,190,126,0.08),transparent);
-  background-attachment:fixed;transition:margin .35s var(--ease)}
-.material-symbols-rounded,.ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;vertical-align:middle}
-button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-input,select,textarea{font-family:inherit}
-::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--card-hover);border-radius:8px}
-.hidden{display:none!important}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  font-family:var(--font-b);
+  background:var(--space-950);
+  color:var(--ink);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#stars{position:fixed;inset:0;z-index:0;}
+.nebula{position:fixed;z-index:0;pointer-events:none;filter:blur(60px);opacity:.55;border-radius:50%;}
+.neb1{width:55vw;height:55vw;left:-8vw;top:-14vw;
+  background:radial-gradient(circle at 50% 50%,var(--magenta),transparent 62%);opacity:.32;}
+.neb2{width:48vw;height:48vw;right:-10vw;top:8vh;
+  background:radial-gradient(circle at 50% 50%,var(--blue),transparent 62%);opacity:.34;}
+.neb3{width:60vw;height:60vw;left:18vw;bottom:-30vw;
+  background:radial-gradient(circle at 50% 50%,var(--violet),transparent 64%);opacity:.26;}
+#root{position:relative;z-index:1;height:100%;}
 
-/* ── Topbar ── */
-.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;padding:12px 16px;
-  background:linear-gradient(180deg,rgba(10,14,20,0.95),rgba(10,14,20,0.65));backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--card-border)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-0.02em}
-.brand .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--green),var(--blue));display:grid;place-items:center;color:#04110b;font-weight:900}
-.brand .sub{font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:0.14em;text-transform:uppercase}
-.who{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-body)}
-.who .chip{padding:6px 12px;border-radius:999px;background:var(--card2);border:1px solid var(--card-border);font-weight:600;display:flex;align-items:center;gap:6px}
-.who .chip .ms{font-size:16px;color:var(--green)}
+/* scrollbars */
+*::-webkit-scrollbar{width:10px;height:10px;}
+*::-webkit-scrollbar-thumb{background:rgba(120,140,230,.22);border-radius:20px;border:2px solid transparent;background-clip:padding-box;}
+*::-webkit-scrollbar-thumb:hover{background:rgba(120,140,230,.4);background-clip:padding-box;}
+*::-webkit-scrollbar-track{background:transparent;}
 
-/* ── Tabs ── */
-.tabs{position:sticky;top:57px;z-index:35;display:flex;gap:4px;padding:8px 12px;overflow-x:auto;
-  background:rgba(10,14,20,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--card-border);scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--text-muted);white-space:nowrap;border:1px solid transparent;transition:all .2s var(--ease)}
-.tab .ms{font-size:18px}
-.tab:hover{color:var(--text-body);background:var(--card)}
-.tab.on{color:var(--text);background:var(--card2);border-color:var(--card-hover)}
-.tab.on .ms{color:var(--green)}
-.tab.mgr{margin-left:auto}
+/* shared atoms used across component files */
+.glass{background:var(--panel);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--line);}
+.mono{font-family:var(--font-m);}
+.disp{font-family:var(--font-d);}
+button{font-family:inherit;cursor:pointer;color:inherit;}
+input,select,textarea{font-family:inherit;color:inherit;}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+.scrollY{overflow-y:auto;overflow-x:hidden;}
 
-/* ── Layout ── */
-.wrap{max-width:920px;margin:0 auto;padding:18px 16px 90px}
-.panel{animation:fade .35s var(--ease)}
-@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.h1{font-size:24px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 2px}
-.h1 .accent{background:linear-gradient(135deg,var(--green),var(--blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.sub1{font-size:13px;color:var(--text-muted);margin-bottom:18px}
-.card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:18px;backdrop-filter:blur(10px);margin-bottom:16px}
-.card h2{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
-.card h2 .ms{color:var(--green);font-size:20px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media(max-width:560px){.grid2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes fadeUp{from{transform:translateY(10px)}to{transform:none}}
+@keyframes popIn{from{transform:scale(.97)}to{transform:none}}
+.fadeUp{animation:fadeUp .5s cubic-bezier(.2,.7,.2,1) both;}
 
-/* ── Forms ── */
-.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
-.field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)}
-.inp{background:rgba(0,0,0,0.25);border:1px solid var(--card-border);border-radius:12px;padding:11px 13px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
-.inp:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--glow-green)}
-.inp::placeholder{color:rgba(160,168,180,0.4)}
-select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c8794' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:700;background:var(--card2);border:1px solid var(--card-border);color:var(--text);transition:all .2s var(--ease)}
-.btn:hover{border-color:var(--card-hover);background:var(--card-hover)}
-.btn.primary{background:linear-gradient(135deg,var(--green),#1d9d63);border:none;color:#04110b;box-shadow:0 6px 18px var(--glow-green)}
-.btn.primary:hover{filter:brightness(1.08)}
-.btn.blue{background:linear-gradient(135deg,var(--blue),#2f6fe0);color:#fff;border:none}
-.btn.full{width:100%}
-.btn.sm{padding:8px 12px;font-size:12px;border-radius:10px}
-.btn.ghost{background:transparent}
-.btn:disabled{opacity:.45;pointer-events:none}
-
-/* ── Chips / pills ── */
-.autochip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:11px;background:rgba(74,142,255,0.10);border:1px solid rgba(74,142,255,0.25);font-size:13px;font-weight:600;color:var(--blue)}
-.autochip .ms{font-size:16px}
-.autochip.green{background:rgba(46,190,126,0.10);border-color:rgba(46,190,126,0.25);color:var(--green)}
-.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.02em}
-.pill.pass{background:rgba(46,190,126,0.15);color:var(--green)}
-.pill.warn{background:rgba(240,168,82,0.15);color:var(--amber)}
-.pill.fail{background:rgba(255,77,109,0.15);color:var(--red)}
-.pill.muted{background:var(--card2);color:var(--text-muted)}
-
-/* ── Selectable cards (mix/pour) ── */
-.selgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.selcard{position:relative;text-align:left;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--card-border);transition:all .2s var(--ease);overflow:hidden}
-.selcard:hover{border-color:var(--card-hover);transform:translateY(-2px)}
-.selcard.on{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 8px 22px var(--glow-green)}
-.selcard .mono{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:-0.01em}
-.selcard .meta{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5}
-.selcard .strength{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;color:var(--amber)}
-.selcard.add{display:grid;place-items:center;border-style:dashed;color:var(--text-muted);min-height:78px;font-weight:600;gap:4px}
-.selcard.add:hover{color:var(--green);border-color:var(--green)}
-
-/* ── Stepper ── */
-.steps{display:flex;align-items:center;gap:6px;margin-bottom:18px;font-size:12px;font-weight:700}
-.steps .st{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:var(--card);border:1px solid var(--card-border);color:var(--text-muted)}
-.steps .st.on{color:var(--text);border-color:var(--green);background:rgba(46,190,126,0.08)}
-.steps .st .n{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:10px;background:var(--card2)}
-.steps .st.on .n{background:var(--green);color:#04110b}
-.steps .arr{color:var(--text-muted);font-size:14px}
-
-/* ── Cylinder inputs ── */
-.cyls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cyl{position:relative}
-.cyl label{position:absolute;top:-7px;left:10px;background:var(--bg2);padding:0 6px;font-size:10px;font-weight:700;color:var(--text-muted);border-radius:4px}
-.live-readout{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:14px;background:rgba(0,0,0,0.25);border:1px solid var(--card-border);margin:14px 0}
-.live-readout .big{font-size:30px;font-weight:900;font-family:var(--font-mono);letter-spacing:-0.02em}
-.live-readout .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)}
-
-/* ── Metrics tiles ── */
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px}
-.tile{display:flex;align-items:center;gap:11px;padding:13px;border-radius:14px;background:var(--card);border:1px solid var(--card-border)}
-.tile .ms{font-size:24px;color:var(--green)}
-.tile .v{font-size:22px;font-weight:800;line-height:1;font-family:var(--font-mono)}
-.tile .l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-top:3px}
-.tile.amber .ms{color:var(--amber)} .tile.blue .ms{color:var(--blue)} .tile.purple .ms{color:var(--purple)} .tile.red .ms{color:var(--red)}
-
-/* ── Table ── */
-.tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:8px 10px;border-bottom:1px solid var(--card-border)}
-.tbl td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text-body)}
-.tbl tr:hover td{background:rgba(255,255,255,0.02)}
-.tbl .mono{font-family:var(--font-mono)}
-.tbl .act{display:flex;gap:6px}
-.iconbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--card-border);color:var(--text-muted)}
-.iconbtn:hover{color:var(--text);border-color:var(--card-hover)}
-.iconbtn.danger:hover{color:var(--red);border-color:var(--red)}
-/* table polish */
-.tblwrap{border:1px solid var(--card-border);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
-.tblwrap .scroll{overflow-x:auto}
-.tbl thead th{position:sticky;top:0;background:var(--bg2);z-index:1}
-.tbl tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015)}
-.tbl td.num,.tbl th.num{text-align:right;font-family:var(--font-mono)}
-.tbl td.ctr,.tbl th.ctr{text-align:center}
-.tbl .act{display:flex;gap:6px;justify-content:flex-end}
-.tbl-foot{padding:9px 12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center}
-.goat{margin-left:5px}
-/* filter bar */
-.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.filters .inp{width:auto;flex:1;min-width:160px}
-.filters .inp.date{flex:none;min-width:150px}
-.filters .inp.sel{flex:none;min-width:120px}
-.mine-tog{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text-body);padding:9px 13px;border-radius:12px;background:var(--card);border:1px solid var(--card-border);cursor:pointer;white-space:nowrap}
-.mine-tog input{accent-color:var(--green);width:16px;height:16px}
-.searchbar{position:relative;margin-bottom:12px}
-.searchbar .ms{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:18px;pointer-events:none}
-.searchbar .inp{padding-left:38px}
-
-/* ── Leaderboard ── */
-.podium{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;align-items:end;margin-bottom:18px}
-.pod{text-align:center;padding:16px 10px;border-radius:16px;background:var(--card);border:1px solid var(--card-border);position:relative}
-.pod.first{background:linear-gradient(180deg,rgba(240,168,82,0.16),var(--card));border-color:rgba(240,168,82,0.4);padding-bottom:26px}
-.pod.second{background:linear-gradient(180deg,rgba(200,210,225,0.10),var(--card))}
-.pod.third{background:linear-gradient(180deg,rgba(205,127,80,0.12),var(--card))}
-.pod .medal{font-size:26px}
-.pod .nm{font-weight:800;font-size:14px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pod .sc{font-family:var(--font-mono);font-weight:700;font-size:20px;margin-top:2px}
-.pod .sc.gold{color:var(--amber)} .pod .un{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em}
-.lbrow{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:var(--card);border:1px solid var(--card-border);margin-bottom:7px}
-.lbrow.me{border-color:var(--green);box-shadow:0 0 0 1px var(--glow-green)}
-.lbrow .rank{width:26px;font-weight:800;font-family:var(--font-mono);color:var(--text-muted);text-align:center}
-.lbrow .nm{font-weight:700;flex:1}
-.lbrow .pts{font-family:var(--font-mono);font-weight:700;color:var(--green)}
-.lbrow .logs{font-size:11px;color:var(--text-muted)}
-.seg{display:inline-flex;background:var(--card);border:1px solid var(--card-border);border-radius:999px;padding:3px;margin-bottom:14px}
-.seg button{padding:6px 16px;border-radius:999px;font-size:12px;font-weight:700;color:var(--text-muted)}
-.seg button.on{background:var(--card-hover);color:var(--text)}
-
-/* ── Charts ── */
-.chartcard{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px}
-.chartcard .chd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.chartcard h3{font-size:14px;font-weight:700;margin:0}
-.chartwrap{position:relative;height:260px}
-
-/* ── Empty state ── */
-.empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
-.empty .ms{font-size:44px;opacity:.5;margin-bottom:10px}
-.empty p{font-size:14px;margin:4px 0}
-
-/* ── Name picker overlay ── */
-.overlay{position:fixed;inset:0;z-index:100;background:rgba(6,9,14,0.92);backdrop-filter:blur(18px);display:grid;place-items:center;padding:24px;animation:fade .3s var(--ease)}
-.picker{max-width:480px;width:100%;text-align:center}
-.picker h1{font-size:28px;font-weight:900;letter-spacing:-0.03em;margin:0 0 6px}
-.picker .accent{background:linear-gradient(135deg,var(--green),var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.picker p{color:var(--text-muted);font-size:14px;margin:0 0 22px}
-.namegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-.namebtn{padding:16px 12px;border-radius:14px;background:var(--card);border:1px solid var(--card-border);font-weight:700;font-size:15px;transition:all .2s var(--ease);display:flex;align-items:center;gap:10px;text-align:left}
-.namebtn:hover{border-color:var(--green);background:rgba(46,190,126,0.08);transform:translateY(-2px)}
-.namebtn .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#04110b;flex:none}
-
-/* ── Toast ── */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);z-index:200;padding:12px 20px;border-radius:12px;background:rgba(20,26,34,0.96);border:1px solid var(--card-hover);font-size:14px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,0.5);transition:transform .35s var(--ease);max-width:90vw}
-#toast.show{transform:translateX(-50%) translateY(0)}
-#toast.success{border-color:var(--green)} #toast.error{border-color:var(--red)}
-
-/* ── Sidebars (dino left, alfred right) ── */
-.sidetoggle{position:fixed;top:50%;transform:translateY(-50%);z-index:55;width:30px;height:74px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--card-border);color:var(--text-muted);transition:all .2s}
-.sidetoggle:hover{color:var(--text);background:var(--card-hover)}
-.sidetoggle.left{left:0;border-radius:0 12px 12px 0;border-left:none}
-.sidetoggle.right{right:0;border-radius:12px 0 0 12px;border-right:none}
-.sidetoggle .ms{font-size:20px}
-.sidepanel{position:fixed;top:0;bottom:0;z-index:60;width:340px;max-width:88vw;background:linear-gradient(180deg,var(--bg2),var(--bg));border:1px solid var(--card-border);display:flex;flex-direction:column;transition:transform .35s var(--ease)}
-.sidepanel.left{left:0;border-left:none;transform:translateX(-101%)}
-.sidepanel.right{right:0;border-right:none;transform:translateX(101%)}
-.sidepanel.open{transform:translateX(0);box-shadow:0 0 60px rgba(0,0,0,0.6)}
-.sidehead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--card-border);font-weight:800}
-.sidehead .ms{color:var(--green)}
-.sidehead .x{margin-left:auto;color:var(--text-muted)}
-
-/* Dino */
-#dinoCanvas{display:block;width:100%;background:rgba(0,0,0,0.2);border-radius:12px;image-rendering:pixelated;touch-action:none}
-.dino-body{padding:16px;display:flex;flex-direction:column;gap:12px}
-.dino-stats{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:13px;color:var(--text-body)}
-.dino-stats b{color:var(--green)}
-.dino-hint{font-size:11px;color:var(--text-muted);text-align:center}
-
-/* Alfred */
-.alf-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-.alf-msg{max-width:88%;padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.alf-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--blue),#2f6fe0);color:#fff;border-bottom-right-radius:4px}
-.alf-msg.bot{align-self:flex-start;background:var(--card2);border:1px solid var(--card-border);border-bottom-left-radius:4px}
-.alf-msg.bot.think{color:var(--text-muted);font-style:italic}
-.alf-in{display:flex;gap:8px;padding:12px;border-top:1px solid var(--card-border)}
-.alf-in input{flex:1;background:rgba(0,0,0,0.25);border:1px solid var(--card-border);border-radius:11px;padding:10px 12px;color:var(--text);outline:none;font-size:14px}
-.alf-in input:focus{border-color:var(--green)}
-.alf-send{width:42px;border-radius:11px;background:linear-gradient(135deg,var(--green),#1d9d63);color:#04110b;display:grid;place-items:center;flex:none}
-
-/* ── Celebration (lifted from openyap-todo, construction-tuned) ── */
-.celeb-spark{position:absolute;top:20px;left:36px;width:var(--sz,6px);height:var(--sz,6px);border-radius:50%;pointer-events:none;z-index:6;opacity:0;will-change:transform,opacity;animation-name:sparkOut;animation-fill-mode:forwards;animation-timing-function:cubic-bezier(.16,1,.3,1)}
-.celeb-spark.sq{border-radius:1px}
-@keyframes sparkOut{0%{transform:rotate(var(--angle))translateX(0)scale(0.4);opacity:0}18%{transform:rotate(var(--angle))translateX(12px)scale(1.15);opacity:1}70%{opacity:0.9}100%{transform:rotate(var(--angle))translateX(var(--dist))scale(0)rotate(180deg);opacity:0}}
-.celeb-ring{position:fixed;top:50%;left:50%;width:60px;height:60px;border-radius:50%;border:2px solid var(--green);margin:-30px 0 0 -30px;pointer-events:none;z-index:9999;will-change:transform,opacity;animation-name:celebRing;animation-fill-mode:forwards;animation-timing-function:cubic-bezier(.22,1,.36,1);opacity:0}
-@keyframes celebRing{0%{transform:scale(0);opacity:0.95}100%{transform:scale(28);opacity:0}}
-.celeb-word{position:fixed;top:38%;left:50%;font-family:var(--font-en);font-size:clamp(26px,5vw,50px);font-weight:900;letter-spacing:-0.02em;text-align:center;background:linear-gradient(135deg,var(--green),var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 24px var(--glow-green);pointer-events:none;z-index:9998;will-change:transform,opacity;animation:celebWord 1.2s cubic-bezier(.16,1,.3,1) forwards;line-height:1.0;white-space:nowrap}
-.celeb-word .sub{display:block;font-size:0.30em;font-weight:700;letter-spacing:0.20em;text-transform:uppercase;color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);background:none;margin-top:6px;text-shadow:none}
-.celeb-word-pass{background:linear-gradient(135deg,#2EBE7E,#22d3ee);-webkit-background-clip:text;background-clip:text;text-shadow:0 0 22px var(--glow-green)}
-.celeb-word-epic{background:linear-gradient(135deg,#4A8EFF,#8B5CF6,#22d3ee);-webkit-background-clip:text;background-clip:text;text-shadow:0 0 26px rgba(74,142,255,0.5)}
-.celeb-word-super_epic{background:linear-gradient(135deg,#2EBE7E,#F0A852,#4A8EFF,#8B5CF6);background-size:200% 200%;-webkit-background-clip:text;background-clip:text;text-shadow:0 0 32px var(--glow-green),0 0 64px rgba(74,142,255,0.5);font-size:clamp(34px,6.5vw,68px);animation:celebWord 1.5s cubic-bezier(.16,1,.3,1) forwards,celebWordHue 1.5s linear forwards}
-@keyframes celebWord{0%{opacity:0;transform:translate(-50%,-30%)scale(0.6)}18%{opacity:1;transform:translate(-50%,-50%)scale(1.12)}32%{transform:translate(-50%,-50%)scale(1)}75%{opacity:1;transform:translate(-50%,-55%)scale(1)}100%{opacity:0;transform:translate(-50%,-68%)scale(0.94)}}
-@keyframes celebWordHue{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-@media(prefers-reduced-motion:reduce){.celeb-spark,.celeb-ring{display:none}}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;}
+}
 </style>
 </head>
 <body>
-
-<!-- Name picker overlay -->
-<div class="overlay" id="pickerOverlay">
-  <div class="picker">
-    <h1>Break <span class="accent">Lab</span></h1>
-    <p>Who's logging today?</p>
-    <div class="namegrid" id="nameGrid"></div>
-  </div>
+<div id="bg">
+  <div class="nebula neb1"></div>
+  <div class="nebula neb2"></div>
+  <div class="nebula neb3"></div>
 </div>
+<canvas id="stars"></canvas>
+<div id="root"></div>
 
-<!-- Topbar -->
-<div class="topbar">
-  <div class="brand"><div class="logo">B</div><div>Break Lab<div class="sub">Cylinder Tracker</div></div></div>
-  <div class="who"><button class="chip" id="whoChip" onclick="switchUser()"><span class="ms">person</span><span id="whoName">—</span></button></div>
-</div>
-
-<!-- Tabs -->
-<div class="tabs" id="tabs">
-  <button class="tab on" data-tab="log"><span class="ms">add_circle</span>Log</button>
-  <button class="tab" data-tab="entries"><span class="ms">history</span>My Logs</button>
-  <button class="tab" data-tab="dash"><span class="ms">monitoring</span>Dashboard</button>
-  <button class="tab" data-tab="board"><span class="ms">trophy</span>Leaderboard</button>
-  <button class="tab" data-tab="export"><span class="ms">download</span>Export</button>
-  <button class="tab mgr" data-tab="mixes"><span class="ms">science</span>Mixes</button>
-  <button class="tab" data-tab="roster"><span class="ms">groups</span>Roster</button>
-</div>
-
-<div class="wrap">
-  <!-- LOG -->
-  <div class="panel" id="panel-log">
-    <div class="tiles" id="logTiles"></div>
-    <div class="steps">
-      <div class="st on" id="stp-1"><span class="n">1</span>Mix</div><span class="arr ms">chevron_right</span>
-      <div class="st" id="stp-2"><span class="n">2</span>Pour</div><span class="arr ms">chevron_right</span>
-      <div class="st" id="stp-3"><span class="n">3</span>Breaks</div>
-    </div>
-
-    <div class="card" id="stepMix">
-      <h2><span class="ms">science</span>Select mix design</h2>
-      <div class="selgrid" id="mixSelGrid"></div>
-    </div>
-
-    <div class="card hidden" id="stepPour">
-      <h2><span class="ms">water_drop</span>Select or add pour <span id="pourMixTag" class="pill muted" style="margin-left:auto"></span></h2>
-      <div id="autoChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
-      <div class="searchbar"><span class="ms">search</span><input class="inp" id="pourSearch" placeholder="Search pours by #, location, or date…" oninput="renderPourSelGrid()"></div>
-      <div class="selgrid" id="pourSelGrid"></div>
-      <!-- New pour form -->
-      <div id="newPourForm" class="hidden" style="margin-top:14px;border-top:1px solid var(--card-border);padding-top:14px">
-        <div class="grid2">
-          <div class="field"><label>Pour # / set</label><input class="inp" id="np-pourNo" placeholder="e.g. PC 12 (Set 1)"></div>
-          <div class="field"><label>Pour date</label><input class="inp" type="date" id="np-date"></div>
-          <div class="field"><label>Location / area</label><input class="inp" id="np-loc" placeholder="e.g. Pile Cap 12"></div>
-          <div class="field"><label>Element</label><input class="inp" id="np-element" placeholder="e.g. Pile Cap"></div>
-          <div class="field"><label>Actual slump (in)</label><input class="inp" type="number" step="0.25" id="np-slump" placeholder="7.0"></div>
-          <div class="field"><label>Air content (%)</label><input class="inp" type="number" step="0.1" id="np-air" placeholder="1.5"></div>
-          <div class="field"><label>Ambient temp (°F)</label><input class="inp" type="number" id="np-ambient" placeholder="72"></div>
-          <div class="field"><label>Concrete temp (°F)</label><input class="inp" type="number" id="np-ctemp" placeholder="78"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <button class="btn primary" onclick="saveNewPour()"><span class="ms">save</span>Save pour</button>
-          <button class="btn ghost" onclick="cancelNewPour()">Cancel</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card hidden" id="stepBreak">
-      <h2><span class="ms">experiment</span>Enter cylinder breaks <span id="breakPourTag" class="pill muted" style="margin-left:auto"></span></h2>
-      <div class="field"><label>Test age (days)</label>
-        <div class="seg" id="ageSeg" style="margin-bottom:4px">
-          <button data-age="7">7-day</button><button data-age="28" class="on">28-day</button>
-          <button data-age="56">56-day</button><button data-age="90">90-day</button>
-        </div>
-      </div>
-      <div class="field"><label>Test date</label><input class="inp" type="date" id="bk-date"></div>
-      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin:6px 0 12px">Cylinder strengths (psi)</label>
-      <div class="cyls">
-        <div class="cyl"><label>CYL 1</label><input class="inp" type="number" id="bk-c1" inputmode="numeric" oninput="liveBreak()" placeholder="—"></div>
-        <div class="cyl"><label>CYL 2</label><input class="inp" type="number" id="bk-c2" inputmode="numeric" oninput="liveBreak()" placeholder="—"></div>
-        <div class="cyl"><label>CYL 3</label><input class="inp" type="number" id="bk-c3" inputmode="numeric" oninput="liveBreak()" placeholder="—"></div>
-      </div>
-      <div class="live-readout">
-        <div><div class="lbl">Average</div><div class="big" id="bk-avg">—</div></div>
-        <div style="text-align:right"><div class="lbl">% of design f'c</div><div class="big" id="bk-pct">—</div></div>
-        <div id="bk-status"></div>
-      </div>
-      <button class="btn primary full" id="bk-submit" onclick="submitBreak()"><span class="ms">bolt</span>Log break set</button>
-    </div>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div class="panel hidden" id="panel-dash">
-    <div class="h1"><span class="accent">Dashboard</span></div>
-    <div class="sub1">Live break analytics across all mixes.</div>
-    <div class="field" style="max-width:280px"><label>Filter by mix</label><select class="inp" id="dashMix" onchange="renderDash()"><option value="all">All mixes</option></select></div>
-    <div class="tiles" id="dashTiles"></div>
-    <div class="chartcard"><div class="chd"><h3>Strength gain over time</h3><button class="btn sm" onclick="exportChart('chStrength','strength-over-time')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chStrength"></canvas></div></div>
-    <div class="chartcard"><div class="chd"><h3>Design vs actual (28-day)</h3><button class="btn sm" onclick="exportChart('chDva','design-vs-actual')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chDva"></canvas></div></div>
-    <div class="grid2">
-      <div class="chartcard"><div class="chd"><h3>Slump: target vs actual</h3><button class="btn sm" onclick="exportChart('chSlump','slump')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chSlump"></canvas></div></div>
-      <div class="chartcard"><div class="chd"><h3>28-day pass / fail</h3><button class="btn sm" onclick="exportChart('chPass','pass-fail')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chPass"></canvas></div></div>
-    </div>
-  </div>
-
-  <!-- MY LOGS / ENTRIES -->
-  <div class="panel hidden" id="panel-entries">
-    <div class="h1"><span class="accent">My Logs</span></div>
-    <div class="sub1">Search, review, and edit logged break sets.</div>
-    <div class="filters">
-      <div class="searchbar" style="flex:1;min-width:200px;margin:0"><span class="ms">search</span><input class="inp" id="enSearch" placeholder="Mix, pour, location, person…" oninput="renderEntries()"></div>
-      <input class="inp date" type="date" id="enDate" onchange="renderEntries()" title="Filter by test date">
-      <select class="inp sel" id="enAge" onchange="renderEntries()"><option value="all">All ages</option><option value="7">7-day</option><option value="28">28-day</option><option value="56">56-day</option><option value="90">90-day</option></select>
-      <label class="mine-tog"><input type="checkbox" id="enMine" checked onchange="renderEntries()">Only mine</label>
-      <button class="btn sm ghost" onclick="clearEntryFilters()"><span class="ms">close</span>Clear</button>
-    </div>
-    <div class="tblwrap"><div class="scroll"><table class="tbl" id="entriesTbl"></table></div><div class="tbl-foot" id="entriesFoot"></div></div>
-  </div>
-
-  <!-- LEADERBOARD -->
-  <div class="panel hidden" id="panel-board">
-    <div class="h1"><span class="accent">Leaderboard</span></div>
-    <div class="sub1">Most data logged wins. Every cylinder set counts.</div>
-    <div class="seg" id="boardSeg"><button class="on" data-range="all">All-time</button><button data-range="week">This week</button></div>
-    <div class="podium" id="podium"></div>
-    <div id="boardList"></div>
-  </div>
-
-  <!-- EXPORT -->
-  <div class="panel hidden" id="panel-export">
-    <div class="h1"><span class="accent">Export</span></div>
-    <div class="sub1">Pull clean spreadsheets and reports any time.</div>
-    <div class="card">
-      <h2><span class="ms">table_view</span>Spreadsheet (.xlsx)</h2>
-      <p style="font-size:13px;color:var(--text-body);margin:0 0 14px">One flat, normalized row per cylinder set — opens straight in Google Sheets or Excel.</p>
-      <div class="field" style="max-width:300px"><label>Scope</label><select class="inp" id="xlsxScope"><option value="all">All mixes</option></select></div>
-      <button class="btn primary" onclick="exportXlsx()"><span class="ms">download</span>Download .xlsx</button>
-    </div>
-    <div class="card">
-      <h2><span class="ms">picture_as_pdf</span>Break report (.pdf)</h2>
-      <p style="font-size:13px;color:var(--text-body);margin:0 0 14px">Formatted report with summary stats and charts, per mix or overall.</p>
-      <div class="field" style="max-width:300px"><label>Scope</label><select class="inp" id="pdfScope"><option value="all">All mixes (overall)</option></select></div>
-      <button class="btn blue" onclick="exportPdf()"><span class="ms">summarize</span>Generate report</button>
-    </div>
-  </div>
-
-  <!-- MIXES -->
-  <div class="panel hidden" id="panel-mixes">
-    <div class="h1"><span class="accent">Mix Designs</span></div>
-    <div class="sub1">The lookup table. Design strength + slump auto-fill from here.</div>
-    <button class="btn primary" style="margin-bottom:14px" onclick="openMixEditor()"><span class="ms">add</span>Add mix</button>
-    <div class="card" style="overflow-x:auto"><table class="tbl" id="mixTbl"></table></div>
-  </div>
-
-  <!-- ROSTER -->
-  <div class="panel hidden" id="panel-roster">
-    <div class="h1"><span class="accent">Roster</span></div>
-    <div class="sub1">Interns who can log data.</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;max-width:420px">
-      <input class="inp" id="newInternName" placeholder="Add intern name…">
-      <button class="btn primary" onclick="addIntern()"><span class="ms">person_add</span>Add</button>
-    </div>
-    <div class="card" style="overflow-x:auto"><table class="tbl" id="rosterTbl"></table></div>
-  </div>
-</div>
-
-<!-- Mix editor modal -->
-<div class="overlay hidden" id="mixModal" style="background:rgba(6,9,14,0.85)">
-  <div class="card" style="max-width:460px;width:100%;max-height:88vh;overflow-y:auto">
-    <h2><span class="ms">science</span><span id="mixModalTitle">Add mix</span></h2>
-    <input type="hidden" id="mx-id">
-    <div class="grid2">
-      <div class="field"><label>Mix #</label><input class="inp" id="mx-no" placeholder="O74C735K1"></div>
-      <div class="field"><label>Design f'c (psi)</label><input class="inp" type="number" id="mx-fc" placeholder="8000"></div>
-      <div class="field"><label>Design age (days)</label><input class="inp" type="number" id="mx-age" value="28"></div>
-      <div class="field"><label>Slump target (in)</label><input class="inp" type="number" step="0.5" id="mx-slump" placeholder="7"></div>
-      <div class="field"><label>Slump tol (±in)</label><input class="inp" type="number" step="0.5" id="mx-tol" placeholder="1"></div>
-      <div class="field"><label>Aggregate size</label><input class="inp" id="mx-agg" placeholder='1"'></div>
-      <div class="field"><label>W/C ratio</label><input class="inp" type="number" step="0.01" id="mx-wc" placeholder="0.35"></div>
-      <div class="field"><label>Supplier</label><input class="inp" id="mx-supplier" placeholder="National Ready Mix"></div>
-    </div>
-    <div class="field"><label>Use</label><input class="inp" id="mx-use" placeholder="Pile Caps"></div>
-    <div class="field"><label>Notes</label><input class="inp" id="mx-notes" placeholder="optional"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn primary" onclick="saveMix()"><span class="ms">save</span>Save</button>
-      <button class="btn ghost" onclick="closeMixEditor()">Cancel</button>
-      <button class="btn ghost" id="mx-del" style="margin-left:auto;color:var(--red)" onclick="deleteMix()"><span class="ms">delete</span></button>
-    </div>
-  </div>
-</div>
-
-<!-- Break edit modal -->
-<div class="overlay hidden" id="breakModal" style="background:rgba(6,9,14,0.85)">
-  <div class="card" style="max-width:420px;width:100%">
-    <h2><span class="ms">edit</span>Edit break set</h2>
-    <input type="hidden" id="eb-id">
-    <div class="autochip green" id="eb-ctx" style="margin-bottom:14px"></div>
-    <div class="grid2">
-      <div class="field"><label>Test age (days)</label><select class="inp" id="eb-age" onchange="liveEdit()"><option value="7">7-day</option><option value="28">28-day</option><option value="56">56-day</option><option value="90">90-day</option></select></div>
-      <div class="field"><label>Test date</label><input class="inp" type="date" id="eb-date"></div>
-    </div>
-    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin:6px 0 12px">Cylinder strengths (psi)</label>
-    <div class="cyls">
-      <div class="cyl"><label>CYL 1</label><input class="inp" type="number" id="eb-c1" inputmode="numeric" oninput="liveEdit()"></div>
-      <div class="cyl"><label>CYL 2</label><input class="inp" type="number" id="eb-c2" inputmode="numeric" oninput="liveEdit()"></div>
-      <div class="cyl"><label>CYL 3</label><input class="inp" type="number" id="eb-c3" inputmode="numeric" oninput="liveEdit()"></div>
-    </div>
-    <div class="live-readout"><div><div class="lbl">Average</div><div class="big" id="eb-avg">—</div></div><div style="text-align:right"><div class="lbl">% of f'c</div><div class="big" id="eb-pct">—</div></div><div id="eb-status"></div></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn primary" onclick="saveBreakEdit()"><span class="ms">save</span>Save</button>
-      <button class="btn ghost" onclick="closeBreakModal()">Cancel</button>
-      <button class="btn ghost" style="margin-left:auto;color:var(--red)" onclick="deleteBreakFromModal()"><span class="ms">delete</span></button>
-    </div>
-  </div>
-</div>
-
-<!-- Dino sidebar -->
-<button class="sidetoggle left" id="dinoToggle" onclick="toggleDino()" title="Dino break"><span class="ms">videogame_asset</span></button>
-<div class="sidepanel left" id="dinoPanel">
-  <div class="sidehead"><span class="ms">sprint</span>Dino Break<span class="x ms" onclick="toggleDino()" style="cursor:pointer">close</span></div>
-  <div class="dino-body">
-    <div class="dino-stats"><span>Score <b id="dinoScore">0</b></span><span>Best <b id="dinoHi">0</b></span></div>
-    <canvas id="dinoCanvas" width="300" height="160"></canvas>
-    <button class="btn primary full" id="dinoBtn" onclick="dinoAction()">Start</button>
-    <div class="dino-hint">Tap canvas / Space / ↑ to jump · ↓ to duck</div>
-  </div>
-</div>
-
-<!-- Alfred sidebar -->
-<button class="sidetoggle right" id="alfToggle" onclick="toggleAlf()" title="Ask Alfred"><span class="ms">smart_toy</span></button>
-<div class="sidepanel right" id="alfPanel">
-  <div class="sidehead"><span class="ms">smart_toy</span>Alfred<span class="x ms" onclick="toggleAlf()" style="cursor:pointer">close</span></div>
-  <div class="alf-msgs" id="alfMsgs"></div>
-  <div class="alf-in"><input id="alfIn" placeholder="Ask about the break data…" onkeydown="if(event.key==='Enter')sendAlf()"><button class="alf-send" onclick="sendAlf()"><span class="ms">send</span></button></div>
-</div>
-
-<div id="toast"></div>
-
+<!-- animated starfield (plain JS, runs immediately) -->
 <script>
-/* ═══════════════ Firebase + helpers ═══════════════ */
-const FIREBASE_CONFIG={databaseURL:'https://gen-lang-client-0119642855-default-rtdb.firebaseio.com'};
-const NS='concrete-breaks';
-let db=null;
-function initFirebase(){try{if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();return true}catch(e){console.error('FB init',e);return false}}
-function fbSet(p,d){return db.ref(`${NS}/${p}`).set(d)}
-function fbUpdate(p,d){return db.ref(`${NS}/${p}`).update(d)}
-function fbPush(p,d){return db.ref(`${NS}/${p}`).push(d)}
-function fbGet(p){return db.ref(`${NS}/${p}`).once('value').then(s=>s.val())}
-function fbListen(p,cb){db.ref(`${NS}/${p}`).on('value',s=>cb(s.val()))}
-function fbRemove(p){return db.ref(`${NS}/${p}`).remove()}
-const $=s=>document.querySelector(s);
-const $$=s=>[...document.querySelectorAll(s)];
-
-/* ═══════════════ State ═══════════════ */
-const state={
-  intern:JSON.parse(localStorage.getItem('cb_intern')||'null'),
-  interns:{}, mixes:{}, pours:{}, breaks:{}, scores:{},
-  sel:{mixId:null,pourId:null,age:28},
-  alf:[], alfKey:null
-};
-const AGG_FALLBACK='—';
-function toast(msg,kind=''){const t=$('#toast');t.textContent=msg;t.className='show '+kind;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',2600)}
-function uid(){return 'x'+Math.random().toString(36).slice(2,9)}
-function todayISO(){return new Date().toISOString().slice(0,10)}
-function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function initials(n){return (n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()}
-const AVATAR_COLORS=['#2EBE7E','#4A8EFF','#8B5CF6','#F0A852','#FF4D6D','#22d3ee'];
-function avatarColor(s){let h=0;for(const c of (s||''))h=(h*31+c.charCodeAt(0))>>>0;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
-function addDays(iso,d){const dt=new Date(iso+'T00:00:00');dt.setDate(dt.getDate()+d);return dt.toISOString().slice(0,10)}
-
-/* ═══════════════ Seed mixes (from Drive folder PDFs) ═══════════════ */
-const SEED_MIXES=[
-  {mixNo:'O80D739K1',designStrength:8000,designAge:28,slumpTarget:7,slumpTol:1,aggSize:'1/2"',use:'Pile Caps (alt, LC3 + Recover)',wcRatio:0.39,supplier:'National Ready Mix',notes:'Lower-carbon LC3 alt'},
-  {mixNo:'O74C735K1',designStrength:8000,designAge:28,slumpTarget:7,slumpTol:1,aggSize:'1"',use:'Pile Caps (alt, LC3)',wcRatio:0.35,supplier:'National Ready Mix',notes:''},
-  {mixNo:'V71C746T1',designStrength:5000,designAge:28,slumpTarget:7,slumpTol:1,aggSize:'1"',use:'Mild Deck',wcRatio:0.46,supplier:'National Ready Mix',notes:''},
-  {mixNo:'S80S662L2',designStrength:null,designAge:28,slumpTarget:6,slumpTol:1,aggSize:'sand',use:'8-sack sand slurry',wcRatio:0.62,supplier:'National Ready Mix',notes:'Slurry — no f\'c'},
-  {mixNo:'S30S4AHL2',designStrength:null,designAge:28,slumpTarget:4,slumpTol:1,aggSize:'sand',use:'3-sack sand slurry / backfill',wcRatio:1.82,supplier:'National Ready Mix',notes:'Backfill slurry'}
-];
-async function ensureSeed(){
-  const m=await fbGet('mixes');
-  if(!m||!Object.keys(m).length){
-    const obj={};SEED_MIXES.forEach((mx,i)=>{obj[uid()]={...mx,order:i}});
-    await fbSet('mixes',obj);
+(function(){
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let w,h,dpr,stars=[],shoot=null,raf;
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function resize(){
+    dpr = Math.min(devicePixelRatio||1, 2);
+    w = c.width = innerWidth*dpr; h = c.height = innerHeight*dpr;
+    c.style.width=innerWidth+'px'; c.style.height=innerHeight+'px';
+    const count = Math.round((innerWidth*innerHeight)/5200);
+    stars = Array.from({length:count},()=>({
+      x:Math.random()*w, y:Math.random()*h,
+      r:(Math.random()*1.3+.2)*dpr,
+      a:Math.random()*.6+.2,
+      tw:Math.random()*.02+.004,
+      ph:Math.random()*Math.PI*2,
+      hue:Math.random()<.18?(Math.random()<.5?330:205):null,
+      dx:(Math.random()-.5)*.02*dpr, dy:(Math.random()*.04+.01)*dpr,
+    }));
   }
-}
-// Seed Danzel (manager + goat) if no interns exist yet.
-async function ensureSeedInterns(){
-  const i=await fbGet('interns');
-  if(!i||!Object.keys(i).length){
-    await fbSet('interns',{[uid()]:{name:'Danzel',active:true,role:'manager',goat:true,order:0}});
-  }
-}
-
-/* ═══════════════ Boot ═══════════════ */
-async function boot(){
-  if(!initFirebase()){toast('Firebase failed to load','error');return}
-  await ensureSeed();
-  await ensureSeedInterns();
-  fbListen('interns',v=>{state.interns=v||{};renderNamePicker();renderRoster()});
-  fbListen('mixes',v=>{state.mixes=v||{};onDataChange()});
-  fbListen('pours',v=>{state.pours=v||{};onDataChange()});
-  fbListen('breaks',v=>{state.breaks=v||{};onDataChange()});
-  fbListen('scores',v=>{state.scores=v||{};renderBoard();renderLogTiles()});
-  if(state.intern){showApp()}else{$('#pickerOverlay').classList.remove('hidden')}
-}
-function onDataChange(){
-  populateMixSelects();renderMixSelGrid();renderMixTbl();renderDash();renderLogTiles();
-  if(state.sel.mixId)renderPourSelGrid();
-  if($('#panel-entries')&&!$('#panel-entries').classList.contains('hidden'))renderEntries();
-}
-
-/* ═══════════════ Name picker ═══════════════ */
-function renderNamePicker(){
-  const g=$('#nameGrid');const list=Object.entries(state.interns).filter(([,i])=>i.active!==false).sort((a,b)=>(a[1].order??99)-(b[1].order??99));
-  if(!list.length){g.innerHTML=`<p style="grid-column:1/-1;color:var(--text-muted);font-size:13px">No interns yet. A manager can add them in the Roster tab after entering as a guest.</p><button class="namebtn" style="grid-column:1/-1;justify-content:center" onclick="pickIntern('guest','Guest')"><span class="av" style="background:#7c8794">G</span>Continue as guest</button>`;return}
-  g.innerHTML=list.map(([id,i])=>`<button class="namebtn" onclick="pickIntern('${id}',${JSON.stringify(i.name).replace(/"/g,'&quot;')})"><span class="av" style="background:${avatarColor(i.name)}">${esc(initials(i.name))}</span>${esc(i.name)}</button>`).join('');
-}
-function pickIntern(id,name){state.intern={id,name};localStorage.setItem('cb_intern',JSON.stringify(state.intern));showApp()}
-function showApp(){$('#pickerOverlay').classList.add('hidden');$('#whoName').textContent=state.intern.name;renderAll()}
-function switchUser(){localStorage.removeItem('cb_intern');state.intern=null;$('#pickerOverlay').classList.remove('hidden');renderNamePicker()}
-function renderAll(){populateMixSelects();renderMixSelGrid();renderMixTbl();renderRoster();renderDash();renderBoard();renderLogTiles()}
-
-/* ═══════════════ Tabs ═══════════════ */
-$$('.tab').forEach(t=>t.onclick=()=>{
-  $$('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
-  $$('.panel').forEach(p=>p.classList.add('hidden'));
-  $('#panel-'+t.dataset.tab).classList.remove('hidden');
-  if(t.dataset.tab==='dash')renderDash();
-  if(t.dataset.tab==='board')renderBoard();
-  if(t.dataset.tab==='entries')renderEntries();
-});
-
-/* ═══════════════ Mix selects + grid ═══════════════ */
-function mixList(){return Object.entries(state.mixes).sort((a,b)=>(a[1].order??99)-(b[1].order??99))}
-function populateMixSelects(){
-  const opts='<option value="all">All mixes</option>'+mixList().map(([id,m])=>`<option value="${id}">${esc(m.mixNo)}</option>`).join('');
-  ['#dashMix','#xlsxScope','#pdfScope'].forEach(s=>{const el=$(s);if(el){const v=el.value;el.innerHTML=s==='#pdfScope'?opts.replace('All mixes','All mixes (overall)'):opts;if([...el.options].some(o=>o.value===v))el.value=v}});
-}
-function renderMixSelGrid(){
-  const g=$('#mixSelGrid');if(!g)return;
-  g.innerHTML=mixList().map(([id,m])=>{
-    const fc=m.designStrength?`${m.designStrength} psi`:'slurry';
-    return `<button class="selcard ${state.sel.mixId===id?'on':''}" onclick="selectMix('${id}')"><span class="strength">${fc}</span><div class="mono">${esc(m.mixNo)}</div><div class="meta">${esc(m.use||'')}<br>${esc(m.aggSize||'')} agg · slump ${m.slumpTarget??'—'}"</div></button>`;
-  }).join('')||'<div class="empty"><span class="ms">science</span><p>No mixes — add one in the Mixes tab.</p></div>';
-}
-function selectMix(id){
-  state.sel.mixId=id;state.sel.pourId=null;
-  renderMixSelGrid();
-  $('#stepPour').classList.remove('hidden');$('#stepBreak').classList.add('hidden');
-  $('#stp-2').classList.add('on');$('#stp-3').classList.remove('on');
-  const m=state.mixes[id];
-  $('#pourMixTag').textContent=m.mixNo;
-  $('#autoChips').innerHTML=`<span class="autochip green"><span class="ms">bolt</span>Design f'c: ${m.designStrength?m.designStrength+' psi @ '+(m.designAge||28)+'d':'slurry (n/a)'}</span><span class="autochip"><span class="ms">opacity</span>Target slump: ${m.slumpTarget??'—'}" ±${m.slumpTol??1}</span>`;
-  renderPourSelGrid();
-  $('#stepPour').scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-function poursForMix(mixId){return Object.entries(state.pours).filter(([,p])=>p.mixId===mixId).sort((a,b)=>(b[1].pourDate||'').localeCompare(a[1].pourDate||''))}
-function renderPourSelGrid(){
-  const g=$('#pourSelGrid');let list=poursForMix(state.sel.mixId);
-  const q=($('#pourSearch')?.value||'').trim().toLowerCase();
-  if(q)list=list.filter(([,p])=>[(p.pourNo||''),(p.location||''),(p.element||''),(p.pourDate||'')].join(' ').toLowerCase().includes(q));
-  g.innerHTML=list.map(([id,p])=>{
-    const nb=Object.values(state.breaks).filter(b=>b.pourId===id).length;
-    return `<button class="selcard ${state.sel.pourId===id?'on':''}" onclick="selectPour('${id}')"><div class="mono">${esc(p.pourNo||'Pour')}</div><div class="meta">${esc(p.pourDate||'')}${p.location?' · '+esc(p.location):''}<br>${nb} break set${nb===1?'':'s'} · slump ${p.slumpActual??'—'}"</div></button>`;
-  }).join('')+`<button class="selcard add" onclick="showNewPour()"><span class="ms">add</span>New pour</button>`;
-}
-function selectPour(id){
-  state.sel.pourId=id;renderPourSelGrid();
-  $('#newPourForm').classList.add('hidden');
-  $('#stepBreak').classList.remove('hidden');$('#stp-3').classList.add('on');
-  $('#breakPourTag').textContent=(state.pours[id].pourNo||'Pour');
-  if(!$('#bk-date').value)$('#bk-date').value=defaultTestDate();
-  liveBreak();
-  $('#stepBreak').scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-function showNewPour(){$('#newPourForm').classList.remove('hidden');if(!$('#np-date').value)$('#np-date').value=todayISO();$('#np-pourNo').focus()}
-function cancelNewPour(){$('#newPourForm').classList.add('hidden')}
-async function saveNewPour(){
-  const pourNo=$('#np-pourNo').value.trim();
-  if(!pourNo){toast('Enter a pour #','error');return}
-  const id=uid();
-  const pour={mixId:state.sel.mixId,pourNo,pourDate:$('#np-date').value||todayISO(),location:$('#np-loc').value.trim(),element:$('#np-element').value.trim(),
-    slumpActual:numOrNull($('#np-slump').value),airContent:numOrNull($('#np-air').value),ambientTemp:numOrNull($('#np-ambient').value),concreteTemp:numOrNull($('#np-ctemp').value),
-    loggedBy:state.intern.id,loggedByName:state.intern.name,loggedAt:Date.now()};
-  await fbSet(`pours/${id}`,pour);
-  await bumpScore(1);
-  ['np-pourNo','np-loc','np-element','np-slump','np-air','np-ambient','np-ctemp'].forEach(k=>$('#'+k).value='');
-  state.sel.pourId=id;
-  toast('Pour saved','success');
-  playCelebrate(null,'pass','Pour logged');
-  selectPour(id);
-}
-function numOrNull(v){return v===''||v==null?null:parseFloat(v)}
-function defaultTestDate(){const p=state.pours[state.sel.pourId];if(p&&p.pourDate)return addDays(p.pourDate,state.sel.age);return todayISO()}
-
-/* age segment */
-$('#ageSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.sel.age=+b.dataset.age;$$('#ageSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#bk-date').value=defaultTestDate();liveBreak()});
-
-/* ═══════════════ Live break readout ═══════════════ */
-function cylVals(){return [$('#bk-c1').value,$('#bk-c2').value,$('#bk-c3').value].map(v=>v===''?null:parseFloat(v))}
-function avgOf(arr){const v=arr.filter(x=>x!=null&&!isNaN(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null}
-function liveBreak(){
-  const m=state.mixes[state.sel.mixId];const avg=avgOf(cylVals());
-  $('#bk-avg').textContent=avg==null?'—':Math.round(avg).toLocaleString();
-  const fc=m&&m.designStrength;
-  if(avg==null||!fc){$('#bk-pct').textContent='—';$('#bk-status').innerHTML='';return}
-  const pct=avg/fc*100;
-  $('#bk-pct').textContent=Math.round(pct)+'%';
-  let cls='fail',txt='Below f\'c';
-  if(avg>=fc){cls='pass';txt='Meets f\'c'}else if(pct>=90){cls='warn';txt='Within 10%'}
-  $('#bk-status').innerHTML=`<span class="pill ${cls}">${txt}</span>`;
-  $('#bk-pct').style.color=cls==='pass'?'var(--green)':cls==='warn'?'var(--amber)':'var(--red)';
-}
-async function submitBreak(){
-  if(!state.sel.pourId){toast('Pick a pour first','error');return}
-  const cyls=cylVals();const avg=avgOf(cyls);
-  if(avg==null){toast('Enter at least one cylinder','error');return}
-  const m=state.mixes[state.sel.mixId];
-  const id=uid();
-  const bk={pourId:state.sel.pourId,mixId:state.sel.mixId,testAge:state.sel.age,testDate:$('#bk-date').value||todayISO(),
-    cyl1:cyls[0],cyl2:cyls[1],cyl3:cyls[2],avg:Math.round(avg*10)/10,
-    loggedBy:state.intern.id,loggedByName:state.intern.name,loggedAt:Date.now()};
-  $('#bk-submit').disabled=true;
-  try{
-    await fbSet(`breaks/${id}`,bk);
-    const full=cyls.filter(x=>x!=null).length===3;
-    await bumpScore(full?2:1);
-    // Celebration tier by significance
-    const fc=m&&m.designStrength;const pass=fc&&avg>=fc;
-    let tier='pass',word='Break recorded';
-    if(state.sel.age===28&&pass){tier='super_epic';word='PASSED f\'c'}
-    else if(state.sel.age===28){tier='epic';word='28-day logged'}
-    else if(full){tier='pass';word='Full set logged'}
-    playCelebrate(null,tier,word);
-    ['bk-c1','bk-c2','bk-c3'].forEach(k=>$('#'+k).value='');
-    liveBreak();
-    toast('Break set logged','success');
-    renderPourSelGrid();
-  }catch(e){toast('Save failed: '+e.message,'error')}
-  $('#bk-submit').disabled=false;
-}
-
-/* ═══════════════ Scores + leaderboard ═══════════════ */
-async function bumpScore(pts){
-  const id=state.intern.id;if(id==='guest')return;
-  const ref=db.ref(`${NS}/scores/${id}`);
-  await ref.transaction(cur=>{cur=cur||{name:state.intern.name,logs:0,points:0,week:{}};
-    cur.name=state.intern.name;cur.logs=(cur.logs||0)+1;cur.points=(cur.points||0)+pts;
-    const wk=weekKey();cur.week=cur.week||{};cur.week[wk]=(cur.week[wk]||0)+pts;return cur});
-}
-function weekKey(){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
-function isGoat(id){return id&&state.interns[id]&&state.interns[id].goat}
-function goatTag(id){return isGoat(id)?'<span class="goat" title="The GOAT">🐐</span>':''}
-let boardRange='all';
-$('#boardSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;boardRange=b.dataset.range;$$('#boardSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderBoard()});
-function renderBoard(){
-  const wk=weekKey();
-  let rows=Object.entries(state.scores).map(([id,s])=>({id,name:s.name||'?',logs:s.logs||0,
-    points:boardRange==='week'?((s.week&&s.week[wk])||0):(s.points||0)}));
-  rows=rows.filter(r=>r.points>0||boardRange==='all').sort((a,b)=>b.points-a.points);
-  const pod=$('#podium');const top3=rows.slice(0,3);
-  if(!rows.length){pod.innerHTML='';$('#boardList').innerHTML='<div class="empty"><span class="ms">trophy</span><p>No data logged yet. Be the first!</p></div>';return}
-  const order=[1,0,2];const cls=['second','first','third'];const medal=['🥈','🥇','🥉'];
-  pod.innerHTML=order.map((idx,i)=>{const r=top3[idx];if(!r)return '<div></div>';
-    return `<div class="pod ${cls[i]}"><div class="medal">${medal[i]}</div><div class="nm">${esc(r.name)}${goatTag(r.id)}</div><div class="sc ${cls[i]==='first'?'gold':''}">${r.points}</div><div class="un">pts</div></div>`}).join('');
-  $('#boardList').innerHTML=rows.map((r,i)=>`<div class="lbrow ${r.id===state.intern?.id?'me':''}"><div class="rank">${i+1}</div><div class="nm">${esc(r.name)}${goatTag(r.id)}</div><div class="logs">${r.logs} logs</div><div class="pts">${r.points} pts</div></div>`).join('');
-}
-
-/* ═══════════════ Log tiles ═══════════════ */
-function renderLogTiles(){
-  const all=Object.values(state.breaks);const today=todayISO();
-  const myId=state.intern?.id;
-  const mineToday=all.filter(b=>b.loggedBy===myId&&new Date(b.loggedAt).toISOString().slice(0,10)===today).length;
-  const totalSets=all.length;
-  const fc28=all.filter(b=>b.testAge===28);
-  const passed=fc28.filter(b=>{const m=state.mixes[b.mixId];return m&&m.designStrength&&b.avg>=m.designStrength}).length;
-  const passRate=fc28.length?Math.round(passed/fc28.length*100):100;
-  const myPts=myId&&state.scores[myId]?state.scores[myId].points:0;
-  $('#logTiles').innerHTML=`
-    <div class="tile"><span class="ms">today</span><div><div class="v">${mineToday}</div><div class="l">You · today</div></div></div>
-    <div class="tile blue"><span class="ms">database</span><div><div class="v">${totalSets}</div><div class="l">Total sets</div></div></div>
-    <div class="tile amber"><span class="ms">check_circle</span><div><div class="v">${passRate}%</div><div class="l">28-day pass</div></div></div>
-    <div class="tile purple"><span class="ms">military_tech</span><div><div class="v">${myPts}</div><div class="l">Your points</div></div></div>`;
-}
-
-/* ═══════════════ My Logs / Entries (search + edit) ═══════════════ */
-function breakResult(b){const m=state.mixes[b.mixId];const fc=m&&m.designStrength;if(!fc)return {cls:'muted',txt:'—',pct:''};const pct=Math.round(b.avg/fc*100);if(b.avg>=fc)return{cls:'pass',txt:'PASS',pct};if(b.avg>=fc*0.9)return{cls:'warn',txt:'WITHIN 10%',pct};return{cls:'fail',txt:'FAIL',pct}}
-function clearEntryFilters(){$('#enSearch').value='';$('#enDate').value='';$('#enAge').value='all';$('#enMine').checked=true;renderEntries()}
-function renderEntries(){
-  const t=$('#entriesTbl');if(!t)return;
-  const q=$('#enSearch').value.trim().toLowerCase();
-  const date=$('#enDate').value;const age=$('#enAge').value;const mine=$('#enMine').checked;
-  let rows=Object.entries(state.breaks).map(([id,b])=>({id,...b}));
-  if(mine&&state.intern)rows=rows.filter(b=>b.loggedBy===state.intern.id);
-  if(age!=='all')rows=rows.filter(b=>String(b.testAge)===age);
-  if(date)rows=rows.filter(b=>{const p=state.pours[b.pourId];return b.testDate===date||(p&&p.pourDate===date)});
-  if(q)rows=rows.filter(b=>{const m=state.mixes[b.mixId],p=state.pours[b.pourId];return [(m?.mixNo||''),(p?.pourNo||''),(p?.location||''),(b.loggedByName||'')].join(' ').toLowerCase().includes(q)});
-  rows.sort((a,b)=>(b.loggedAt||0)-(a.loggedAt||0));
-  t.innerHTML=`<thead><tr><th>Logged</th><th>Mix</th><th>Pour</th><th class="ctr">Age</th><th class="num">Cyl 1</th><th class="num">Cyl 2</th><th class="num">Cyl 3</th><th class="num">Avg</th><th class="ctr">Result</th><th>By</th><th></th></tr></thead><tbody>${
-    rows.map(b=>{const m=state.mixes[b.mixId]||{},p=state.pours[b.pourId]||{},r=breakResult(b);
-      const canEdit=!state.intern||b.loggedBy===state.intern.id||isGoat(state.intern.id);
-      return `<tr><td>${b.testDate||new Date(b.loggedAt).toISOString().slice(0,10)}</td><td class="mono">${esc(m.mixNo||'?')}</td><td>${esc(p.pourNo||'—')}</td><td class="ctr">${b.testAge}d</td><td class="num">${b.cyl1??'—'}</td><td class="num">${b.cyl2??'—'}</td><td class="num">${b.cyl3??'—'}</td><td class="num" style="font-weight:700">${Math.round(b.avg).toLocaleString()}</td><td class="ctr"><span class="pill ${r.cls}">${r.txt}${r.pct!==''?' '+r.pct+'%':''}</span></td><td>${esc(b.loggedByName||'')}${goatTag(b.loggedBy)}</td><td><div class="act">${canEdit?`<button class="iconbtn" onclick="editBreak('${b.id}')"><span class="ms">edit</span></button><button class="iconbtn danger" onclick="deleteBreak('${b.id}')"><span class="ms">delete</span></button>`:''}</div></td></tr>`;
-    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:30px">No matching entries.</td></tr>'
-  }</tbody>`;
-  $('#entriesFoot').innerHTML=`<span>${rows.length} entr${rows.length===1?'y':'ies'}</span><span>${mine?'Your logs':'All logs'}</span>`;
-}
-/* edit modal */
-function editBreak(id){
-  const b=state.breaks[id];if(!b)return;const m=state.mixes[b.mixId]||{},p=state.pours[b.pourId]||{};
-  $('#breakModal').classList.remove('hidden');
-  $('#eb-id').value=id;$('#eb-ctx').innerHTML=`<span class="ms">science</span>${esc(m.mixNo||'?')} · ${esc(p.pourNo||'pour')}`;
-  $('#eb-age').value=b.testAge;$('#eb-date').value=b.testDate||'';
-  $('#eb-c1').value=b.cyl1??'';$('#eb-c2').value=b.cyl2??'';$('#eb-c3').value=b.cyl3??'';
-  liveEdit();
-}
-function closeBreakModal(){$('#breakModal').classList.add('hidden')}
-function editCyls(){return [$('#eb-c1').value,$('#eb-c2').value,$('#eb-c3').value].map(v=>v===''?null:parseFloat(v))}
-function liveEdit(){
-  const b=state.breaks[$('#eb-id').value];const m=b&&state.mixes[b.mixId];const avg=avgOf(editCyls());
-  $('#eb-avg').textContent=avg==null?'—':Math.round(avg).toLocaleString();
-  const fc=m&&m.designStrength;
-  if(avg==null||!fc){$('#eb-pct').textContent='—';$('#eb-status').innerHTML='';return}
-  const pct=avg/fc*100;$('#eb-pct').textContent=Math.round(pct)+'%';
-  let cls='fail',txt="Below f'c";if(avg>=fc){cls='pass';txt="Meets f'c"}else if(pct>=90){cls='warn';txt='Within 10%'}
-  $('#eb-status').innerHTML=`<span class="pill ${cls}">${txt}</span>`;
-  $('#eb-pct').style.color=cls==='pass'?'var(--green)':cls==='warn'?'var(--amber)':'var(--red)';
-}
-async function saveBreakEdit(){
-  const id=$('#eb-id').value;const b=state.breaks[id];if(!b)return;
-  const cyls=editCyls();const avg=avgOf(cyls);if(avg==null){toast('Enter at least one cylinder','error');return}
-  await fbUpdate(`breaks/${id}`,{testAge:+$('#eb-age').value,testDate:$('#eb-date').value||b.testDate,cyl1:cyls[0],cyl2:cyls[1],cyl3:cyls[2],avg:Math.round(avg*10)/10,editedBy:state.intern?.name,editedAt:Date.now()});
-  closeBreakModal();toast('Entry updated','success');
-}
-async function deleteBreakFromModal(){const id=$('#eb-id').value;closeBreakModal();await deleteBreak(id)}
-async function deleteBreak(id){if(!confirm('Delete this break set? This cannot be undone.'))return;await fbRemove(`breaks/${id}`);toast('Entry deleted','success')}
-
-/* ═══════════════ Celebration (lifted from openyap-todo) ═══════════════ */
-const CELEB_CFG={pass:{count:10,rings:1,dist:[48,90],size:[5,9],duration:750},epic:{count:20,rings:2,dist:[70,130],size:[7,12],duration:950},super_epic:{count:32,rings:3,dist:[90,180],size:[8,14],duration:1100}};
-const CELEB_PALETTE=['#2EBE7E','#4A8EFF','#8B5CF6','#F0A852','#22d3ee','#FF4D6D'];
-function playCelebrate(card,tier,word){
-  const cfg=CELEB_CFG[tier]||CELEB_CFG.pass;
-  // particles anchor: the submit button or center
-  const anchor=card||$('#bk-submit')||document.body;
-  if(anchor&&anchor!==document.body){
-    if(getComputedStyle(anchor).position==='static')anchor.style.position='relative';
-    const base=Math.random()*360;
-    for(let i=0;i<cfg.count;i++){
-      const sp=document.createElement('span');sp.className='celeb-spark';
-      const angle=base+(360/cfg.count)*i+(Math.random()-0.5)*18;
-      const dist=cfg.dist[0]+Math.random()*(cfg.dist[1]-cfg.dist[0]);
-      const size=cfg.size[0]+Math.random()*(cfg.size[1]-cfg.size[0]);
-      const color=CELEB_PALETTE[(i+Math.floor(Math.random()*CELEB_PALETTE.length))%CELEB_PALETTE.length];
-      if(Math.random()<0.35)sp.classList.add('sq');
-      sp.style.setProperty('--angle',angle+'deg');sp.style.setProperty('--dist',dist+'px');sp.style.setProperty('--sz',size+'px');
-      sp.style.background=color;sp.style.boxShadow=`0 0 6px ${color}`;sp.style.animationDelay=(i*10)+'ms';sp.style.animationDuration=cfg.duration+'ms';
-      anchor.appendChild(sp);
-      sp.addEventListener('animationend',()=>sp.remove(),{once:true});
-      setTimeout(()=>{if(sp.parentNode)sp.remove()},cfg.duration+300);
+  function maybeShoot(){
+    if(reduce) return;
+    if(!shoot && Math.random()<.004){
+      shoot={x:Math.random()*w*.7,y:Math.random()*h*.4,
+        vx:(Math.random()*4+5)*dpr,vy:(Math.random()*2+1.6)*dpr,life:1};
     }
   }
-  if(cfg.rings){const rc=['#2EBE7E','#4A8EFF','#F0A852','#8B5CF6'];
-    for(let i=0;i<cfg.rings;i++){const r=document.createElement('div');r.className='celeb-ring';r.style.borderColor=rc[i%rc.length];r.style.animationDelay=(i*120)+'ms';r.style.animationDuration=(cfg.duration+200)+'ms';document.body.appendChild(r);r.addEventListener('animationend',()=>r.remove(),{once:true});setTimeout(()=>{if(r.parentNode)r.remove()},cfg.duration+600)}}
-  const wordEl=document.createElement('div');wordEl.className='celeb-word celeb-word-'+tier;
-  const pts=tier==='super_epic'?2:tier==='epic'?2:1;
-  wordEl.innerHTML=`${word||'Logged'}<span class="sub">+${pts} pt${pts===1?'':'s'}${tier==='super_epic'?' · NICE':''}</span>`;
-  document.body.appendChild(wordEl);wordEl.addEventListener('animationend',()=>wordEl.remove(),{once:true});setTimeout(()=>{if(wordEl.parentNode)wordEl.remove()},1600);
-}
-
-/* ═══════════════ Dashboard charts ═══════════════ */
-let charts={};
-const CHART_FONT={family:'Inter'};
-Chart.defaults.color='#7c8794';Chart.defaults.font.family='Inter';Chart.defaults.borderColor='rgba(255,255,255,0.06)';
-function breaksForScope(mixId){const all=Object.values(state.breaks);return mixId==='all'?all:all.filter(b=>b.mixId===mixId)}
-function renderDashTiles(scope){
-  const bs=breaksForScope(scope);const fc28=bs.filter(b=>b.testAge===28);
-  const passed=fc28.filter(b=>{const m=state.mixes[b.mixId];return m&&m.designStrength&&b.avg>=m.designStrength}).length;
-  const avg28=fc28.length?Math.round(fc28.reduce((a,b)=>a+b.avg,0)/fc28.length):0;
-  const pours=new Set(bs.map(b=>b.pourId)).size;
-  $('#dashTiles').innerHTML=`
-    <div class="tile blue"><span class="ms">database</span><div><div class="v">${bs.length}</div><div class="l">Break sets</div></div></div>
-    <div class="tile"><span class="ms">water_drop</span><div><div class="v">${pours}</div><div class="l">Pours</div></div></div>
-    <div class="tile amber"><span class="ms">speed</span><div><div class="v">${avg28.toLocaleString()}</div><div class="l">Avg 28d psi</div></div></div>
-    <div class="tile ${fc28.length&&passed===fc28.length?'':'red'}"><span class="ms">verified</span><div><div class="v">${fc28.length?Math.round(passed/fc28.length*100):100}%</div><div class="l">28d pass</div></div></div>`;
-}
-function renderDash(){
-  const scope=$('#dashMix')?$('#dashMix').value:'all';
-  renderDashTiles(scope);
-  const bs=breaksForScope(scope);
-  // 1. strength over time (scatter age vs strength, color by mix)
-  const byMix={};bs.forEach(b=>{(byMix[b.mixId]=byMix[b.mixId]||[]).push({x:b.testAge,y:b.avg})});
-  const palette=['#2EBE7E','#4A8EFF','#8B5CF6','#F0A852','#22d3ee','#FF4D6D'];
-  const dsStrength=Object.entries(byMix).map(([mid,pts],i)=>({label:state.mixes[mid]?.mixNo||mid,data:pts.sort((a,b)=>a.x-b.x),backgroundColor:palette[i%palette.length],borderColor:palette[i%palette.length],showLine:false,pointRadius:4}));
-  drawChart('chStrength','scatter',{datasets:dsStrength},{scales:{x:{title:{display:true,text:'Test age (days)'},type:'linear'},y:{title:{display:true,text:'Strength (psi)'}}}});
-  // 2. design vs actual (bar per pour, 28d avg) + design line
-  const fc28=bs.filter(b=>b.testAge===28);
-  const labels=fc28.map(b=>state.pours[b.pourId]?.pourNo||'—');
-  const actual=fc28.map(b=>b.avg);
-  const design=fc28.map(b=>state.mixes[b.mixId]?.designStrength||null);
-  drawChart('chDva','bar',{labels,datasets:[
-    {label:'Actual 28d',data:actual,backgroundColor:'#4A8EFF'},
-    {label:"Design f'c",data:design,type:'line',borderColor:'#F0A852',borderDash:[6,4],pointRadius:0,borderWidth:2}
-  ]},{scales:{y:{title:{display:true,text:'psi'}}}});
-  // 3. slump target vs actual
-  const ps=Object.entries(state.pours).filter(([,p])=>scope==='all'||p.mixId===scope).filter(([,p])=>p.slumpActual!=null);
-  drawChart('chSlump','bar',{labels:ps.map(([,p])=>p.pourNo||'—'),datasets:[
-    {label:'Actual',data:ps.map(([,p])=>p.slumpActual),backgroundColor:'#2EBE7E'},
-    {label:'Target',data:ps.map(([,p])=>state.mixes[p.mixId]?.slumpTarget??null),type:'line',borderColor:'#F0A852',borderDash:[6,4],pointRadius:0,borderWidth:2}
-  ]},{scales:{y:{title:{display:true,text:'in'}}}});
-  // 4. pass/fail donut
-  const passed=fc28.filter(b=>{const m=state.mixes[b.mixId];return m&&m.designStrength&&b.avg>=m.designStrength}).length;
-  const within=fc28.filter(b=>{const m=state.mixes[b.mixId];return m&&m.designStrength&&b.avg<m.designStrength&&b.avg>=m.designStrength*0.9}).length;
-  const failed=fc28.length-passed-within;
-  drawChart('chPass','doughnut',{labels:['Pass','Within 10%','Fail'],datasets:[{data:[passed,within,failed],backgroundColor:['#2EBE7E','#F0A852','#FF4D6D'],borderWidth:0}]},{cutout:'62%'});
-}
-function drawChart(id,type,data,opts={}){
-  const el=$('#'+id);if(!el)return;
-  if(charts[id])charts[id].destroy();
-  charts[id]=new Chart(el,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:12,font:{size:11}}}},...opts}});
-}
-function exportChart(id,name){
-  const c=charts[id];if(!c){toast('Chart not ready','error');return}
-  const url=c.toBase64Image('image/png',1);const a=document.createElement('a');a.href=url;a.download=`${name}-${todayISO()}.png`;a.click();
-  toast('Chart exported','success');
-}
-
-/* ═══════════════ Exports: xlsx + pdf ═══════════════ */
-function flatRows(scope){
-  const rows=[['Mix #',"Design f'c",'Pour #','Pour Date','Location','Element','Slump Target','Slump Actual','Air %','Test Age','Test Date','Cyl 1','Cyl 2','Cyl 3','Avg','% of f\'c','Result','Logged By']];
-  const bs=Object.values(state.breaks).filter(b=>scope==='all'||b.mixId===scope)
-    .sort((a,b)=>(a.mixId).localeCompare(b.mixId)||(a.testDate||'').localeCompare(b.testDate||''));
-  bs.forEach(b=>{const m=state.mixes[b.mixId]||{};const p=state.pours[b.pourId]||{};
-    const fc=m.designStrength;const pct=fc?Math.round(b.avg/fc*100):'';
-    const res=fc?(b.avg>=fc?'PASS':b.avg>=fc*0.9?'WITHIN 10%':'FAIL'):'';
-    rows.push([m.mixNo||'',fc||'',p.pourNo||'',p.pourDate||'',p.location||'',p.element||'',m.slumpTarget??'',p.slumpActual??'',p.airContent??'',b.testAge,b.testDate||'',b.cyl1??'',b.cyl2??'',b.cyl3??'',b.avg,pct,res,b.loggedByName||'']);
-  });
-  return rows;
-}
-function exportXlsx(){
-  const scope=$('#xlsxScope').value;
-  const rows=flatRows(scope);
-  if(rows.length<2){toast('No data to export','error');return}
-  const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=rows[0].map(()=>({wch:13}));
-  XLSX.utils.book_append_sheet(wb,ws,'Break Data');
-  // mixes tab
-  const mr=[['Mix #',"Design f'c",'Age','Slump','Tol','Agg','W/C','Use']];
-  mixList().forEach(([,m])=>mr.push([m.mixNo,m.designStrength||'',m.designAge||28,m.slumpTarget??'',m.slumpTol??'',m.aggSize||'',m.wcRatio??'',m.use||'']));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mr),'Mix Designs');
-  const tag=scope==='all'?'All':(state.mixes[scope]?.mixNo||'mix');
-  XLSX.writeFile(wb,`BreakData_${tag}_${todayISO()}.xlsx`);
-  toast('Spreadsheet exported','success');
-}
-function statsFor(scope){
-  const fc28=Object.values(state.breaks).filter(b=>b.testAge===28&&(scope==='all'||b.mixId===scope));
-  const n=fc28.length;const avg=n?fc28.reduce((a,b)=>a+b.avg,0)/n:0;
-  const sd=n>1?Math.sqrt(fc28.reduce((a,b)=>a+(b.avg-avg)**2,0)/(n-1)):0;
-  const cov=avg?sd/avg*100:0;
-  const passed=fc28.filter(b=>{const m=state.mixes[b.mixId];return m&&m.designStrength&&b.avg>=m.designStrength}).length;
-  return {n,avg:Math.round(avg),sd:Math.round(sd),cov:cov.toFixed(1),pass:n?Math.round(passed/n*100):0};
-}
-async function exportPdf(){
-  const scope=$('#pdfScope').value;
-  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'pt',format:'letter'});
-  const tag=scope==='all'?'All Mixes':(state.mixes[scope]?.mixNo||'Mix');
-  doc.setFontSize(20);doc.setTextColor(20,30,40);doc.text(`Concrete Break Report — ${tag}`,40,44);
-  doc.setFontSize(10);doc.setTextColor(120);doc.text(`Generated ${new Date().toLocaleString()} · LA Convention Center`,40,62);
-  const s=statsFor(scope);
-  doc.setFontSize(11);doc.setTextColor(40);
-  doc.text(`28-day sets: ${s.n}    Avg: ${s.avg.toLocaleString()} psi    Std dev: ${s.sd}    COV: ${s.cov}%    Pass rate: ${s.pass}%`,40,84);
-  // chart image (design vs actual) if available
-  let y=100;
-  if(charts['chDva']){try{const img=charts['chDva'].toBase64Image('image/png',1);doc.addImage(img,'PNG',40,y,360,180);}catch(e){}}
-  if(charts['chStrength']){try{const img=charts['chStrength'].toBase64Image('image/png',1);doc.addImage(img,'PNG',420,y,340,180);}catch(e){}}
-  const rows=flatRows(scope);
-  doc.autoTable({head:[rows[0]],body:rows.slice(1),startY:y+196,styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[46,190,126]},margin:{left:40,right:40}});
-  doc.save(`BreakReport_${tag.replace(/\s+/g,'_')}_${todayISO()}.pdf`);
-  toast('Report generated','success');
-}
-
-/* ═══════════════ Mix admin ═══════════════ */
-function renderMixTbl(){
-  const t=$('#mixTbl');if(!t)return;
-  t.innerHTML=`<thead><tr><th>Mix #</th><th class="num">Design f'c</th><th class="ctr">Age</th><th>Slump</th><th>Agg</th><th class="num">W/C</th><th>Use</th><th></th></tr></thead><tbody>${
-    mixList().map(([id,m])=>`<tr><td class="mono" style="font-weight:700">${esc(m.mixNo)}</td><td class="num">${m.designStrength?m.designStrength.toLocaleString()+' psi':'<span class="pill muted">slurry</span>'}</td><td class="ctr">${m.designAge||28}d</td><td>${m.slumpTarget??'—'}" ±${m.slumpTol??1}</td><td>${esc(m.aggSize||'')}</td><td class="num">${m.wcRatio??'—'}</td><td>${esc(m.use||'')}</td><td><div class="act"><button class="iconbtn" onclick="openMixEditor('${id}')"><span class="ms">edit</span></button></div></td></tr>`).join('')
-  }</tbody>`;
-}
-function openMixEditor(id){
-  $('#mixModal').classList.remove('hidden');
-  const m=id?state.mixes[id]:{};
-  $('#mixModalTitle').textContent=id?'Edit mix':'Add mix';
-  $('#mx-id').value=id||'';$('#mx-no').value=m.mixNo||'';$('#mx-fc').value=m.designStrength??'';$('#mx-age').value=m.designAge||28;
-  $('#mx-slump').value=m.slumpTarget??'';$('#mx-tol').value=m.slumpTol??1;$('#mx-agg').value=m.aggSize||'';$('#mx-wc').value=m.wcRatio??'';
-  $('#mx-supplier').value=m.supplier||'';$('#mx-use').value=m.use||'';$('#mx-notes').value=m.notes||'';
-  $('#mx-del').style.display=id?'':'none';
-}
-function closeMixEditor(){$('#mixModal').classList.add('hidden')}
-async function saveMix(){
-  const no=$('#mx-no').value.trim();if(!no){toast('Mix # required','error');return}
-  const id=$('#mx-id').value||uid();
-  const m={mixNo:no,designStrength:numOrNull($('#mx-fc').value),designAge:parseInt($('#mx-age').value)||28,
-    slumpTarget:numOrNull($('#mx-slump').value),slumpTol:numOrNull($('#mx-tol').value),aggSize:$('#mx-agg').value.trim(),
-    wcRatio:numOrNull($('#mx-wc').value),supplier:$('#mx-supplier').value.trim(),use:$('#mx-use').value.trim(),notes:$('#mx-notes').value.trim(),
-    order:state.mixes[id]?.order??Object.keys(state.mixes).length};
-  await fbSet(`mixes/${id}`,m);closeMixEditor();toast('Mix saved','success');
-}
-async function deleteMix(){const id=$('#mx-id').value;if(!id)return;if(!confirm('Delete this mix design?'))return;await fbRemove(`mixes/${id}`);closeMixEditor();toast('Mix deleted','success')}
-
-/* ═══════════════ Roster ═══════════════ */
-function renderRoster(){
-  const t=$('#rosterTbl');if(!t)return;
-  const list=Object.entries(state.interns).sort((a,b)=>(a[1].order??99)-(b[1].order??99));
-  t.innerHTML=`<thead><tr><th>Name</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>${
-    list.map(([id,i])=>{const sc=state.scores[id];return `<tr><td style="font-weight:700"><span style="display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:${avatarColor(i.name)};color:#04110b;font-size:11px;font-weight:800;margin-right:8px;vertical-align:middle">${esc(initials(i.name))}</span>${esc(i.name)}${goatTag(id)}${i.role==='manager'?' <span class="pill blue" style="background:rgba(74,142,255,0.15);color:var(--blue)">manager</span>':''}</td><td>${i.active===false?'<span class="pill muted">inactive</span>':'<span class="pill pass">active</span>'}</td><td class="num">${sc?sc.points:0}</td><td><div class="act"><button class="iconbtn" onclick="toggleGoat('${id}')" title="toggle GOAT">🐐</button><button class="iconbtn" onclick="toggleIntern('${id}')" title="toggle active"><span class="ms">${i.active===false?'visibility':'visibility_off'}</span></button><button class="iconbtn danger" onclick="delIntern('${id}')"><span class="ms">delete</span></button></div></td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No interns yet</td></tr>'
-  }</tbody>`;
-}
-async function addIntern(){const n=$('#newInternName').value.trim();if(!n){toast('Enter a name','error');return}await fbSet(`interns/${uid()}`,{name:n,active:true,order:Object.keys(state.interns).length});$('#newInternName').value='';toast('Intern added','success')}
-async function toggleIntern(id){const i=state.interns[id];await fbUpdate(`interns/${id}`,{active:i.active===false})}
-async function toggleGoat(id){const i=state.interns[id];await fbUpdate(`interns/${id}`,{goat:!i.goat})}
-async function delIntern(id){if(!confirm('Remove this intern?'))return;await fbRemove(`interns/${id}`)}
-
-/* ═══════════════ Dino game (replaces blackjack) ═══════════════ */
-const dino={raf:null,running:false,over:false,score:0,hi:+(localStorage.getItem('cb_dino_hi')||0),
-  y:0,vy:0,duck:false,speed:1.9,obs:[],t:0,ground:130,dy:0};
-function dinoReset(){dino.score=0;dino.speed=1.9;dino.obs=[];dino.t=0;dino.y=0;dino.vy=0;dino.duck=false;dino.over=false;$('#dinoScore').textContent='0'}
-function toggleDino(){const p=$('#dinoPanel');const open=p.classList.toggle('open');
-  if(open){$('#dinoHi').textContent=dino.hi;dinoDraw();}else{dinoStop()}}
-function dinoAction(){
-  if(dino.over||!dino.running){dinoReset();dino.running=true;$('#dinoBtn').textContent='Jump';dinoLoop();return}
-  dinoJump();
-}
-function dinoJump(){if(dino.y===0&&!dino.over){dino.vy=-9.5}}
-function dinoStop(){if(dino.raf)cancelAnimationFrame(dino.raf);dino.raf=null;dino.running=false}
-function dinoLoop(){
-  const c=$('#dinoCanvas');const x=c.getContext('2d');const W=c.width,H=c.height,G=dino.ground;
-  dino.t++;dino.score+=1;if(dino.score%9===0)$('#dinoScore').textContent=Math.floor(dino.score/9);
-  dino.speed+=0.0006;
-  // physics
-  dino.vy+=0.5;dino.y+=dino.vy;if(dino.y>0){dino.y=0;dino.vy=0}
-  // spawn (less frequent, scales gently with speed)
-  if(dino.t%Math.max(78,128-Math.floor(dino.speed*6))===0){const fly=Math.random()<0.22;dino.obs.push({x:W+10,w:fly?20:14,h:fly?14:24+Math.random()*14,fly})}
-  dino.obs.forEach(o=>o.x-=dino.speed*1.2);dino.obs=dino.obs.filter(o=>o.x>-30);
-  // draw
-  x.clearRect(0,0,W,H);
-  x.strokeStyle='rgba(255,255,255,0.18)';x.beginPath();x.moveTo(0,G+1);x.lineTo(W,G+1);x.stroke();
-  // dino
-  const dh=dino.duck?14:26,dw=22,dx=30,dyp=G-dh+dino.y;
-  x.fillStyle='#2EBE7E';x.fillRect(dx,dyp,dw,dh);x.fillStyle='#04110b';x.fillRect(dx+dw-6,dyp+4,3,3);
-  // obstacles + collision
-  let hit=false;
-  x.fillStyle='#F0A852';
-  dino.obs.forEach(o=>{const oy=o.fly?G-40:G-o.h;x.fillRect(o.x,oy,o.w,o.h);
-    if(dx<o.x+o.w&&dx+dw>o.x&&dyp<oy+o.h&&dyp+dh>oy)hit=true;});
-  if(hit){dinoOver();return}
-  dino.raf=requestAnimationFrame(dinoLoop);
-}
-function dinoDraw(){const c=$('#dinoCanvas');const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);x.strokeStyle='rgba(255,255,255,0.18)';x.beginPath();x.moveTo(0,dino.ground+1);x.lineTo(c.width,dino.ground+1);x.stroke();x.fillStyle='#2EBE7E';x.fillRect(30,dino.ground-26,22,26)}
-function dinoOver(){dinoStop();dino.over=true;dino.running=false;const sc=Math.floor(dino.score/6);
-  if(sc>dino.hi){dino.hi=sc;localStorage.setItem('cb_dino_hi',sc);$('#dinoHi').textContent=sc}
-  $('#dinoBtn').textContent='Restart';
-  const c=$('#dinoCanvas');const x=c.getContext('2d');x.fillStyle='rgba(255,77,109,0.85)';x.font='bold 18px Inter';x.textAlign='center';x.fillText('CRACKED',c.width/2,c.height/2)}
-$('#dinoCanvas').addEventListener('pointerdown',e=>{e.preventDefault();dinoAction()});
-window.addEventListener('keydown',e=>{if(!$('#dinoPanel').classList.contains('open'))return;
-  if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();dinoAction()}
-  if(e.code==='ArrowDown'){dino.duck=true}});
-window.addEventListener('keyup',e=>{if(e.code==='ArrowDown')dino.duck=false});
-
-/* ═══════════════ Alfred (MiniMax, client-side) ═══════════════ */
-const ALF_URL='https://api.minimax.io/anthropic/v1/messages';
-const ALF_MODEL='MiniMax-M2.7';
-// Root (un-namespaced) reads — the MiniMax key is shared at root config/ with the CUP dashboard.
-function fbGetRoot(p){return db.ref(p).once('value').then(s=>s.val())}
-function fbSetRoot(p,d){return db.ref(p).set(d)}
-async function getAlfKey(){
-  if(state.alfKey)return state.alfKey;
-  let k=await fbGetRoot('config/minimax_key').catch(()=>null);   // shared with CUP / other apps
-  if(!k)k=localStorage.getItem('cup_alfred_key')||localStorage.getItem('cb_minimax_key');
-  if(!k){k=prompt('Enter MiniMax API key (saved for all apps):');if(k){localStorage.setItem('cb_minimax_key',k);fbSetRoot('config/minimax_key',k).catch(()=>{})}}
-  state.alfKey=k;return k;
-}
-function toggleAlf(){const p=$('#alfPanel');const open=p.classList.toggle('open');
-  if(open&&!state.alf.length){alfAppend('bot',"Hi — I'm Alfred. Ask me anything about your break data: pass rates, averages, which mix is underperforming, slump trends…")}}
-function alfAppend(role,text){const d=document.createElement('div');d.className='alf-msg '+(role==='user'?'user':'bot');d.textContent=text;$('#alfMsgs').appendChild(d);$('#alfMsgs').scrollTop=1e9;return d}
-function buildAlfContext(){
-  const lines=['You are Alfred, a concise concrete-QC assistant for the LA Convention Center project. Answer using ONLY the live data below. Strengths in psi; ages in days.'];
-  lines.push('\nMIX DESIGNS:');
-  mixList().forEach(([,m])=>lines.push(`- ${m.mixNo}: f'c=${m.designStrength||'slurry'} @${m.designAge||28}d, slump ${m.slumpTarget}±${m.slumpTol}", agg ${m.aggSize}, use ${m.use}`));
-  // per-mix 28d stats
-  lines.push('\n28-DAY STATS BY MIX:');
-  mixList().forEach(([id,m])=>{const s=statsFor(id);if(s.n)lines.push(`- ${m.mixNo}: n=${s.n}, avg=${s.avg}psi, COV=${s.cov}%, pass=${s.pass}%`)});
-  // recent breaks
-  const recent=Object.values(state.breaks).sort((a,b)=>b.loggedAt-a.loggedAt).slice(0,12);
-  lines.push('\nRECENT BREAK SETS:');
-  recent.forEach(b=>{const m=state.mixes[b.mixId];const p=state.pours[b.pourId];lines.push(`- ${m?.mixNo} ${p?.pourNo||''} ${b.testAge}d: avg ${b.avg}psi (${b.testDate||''})`)});
-  // leaderboard
-  const top=Object.entries(state.scores).map(([,s])=>`${s.name}:${s.points}`).sort().slice(0,5);
-  lines.push('\nLEADERBOARD: '+top.join(', '));
-  return lines.join('\n');
-}
-async function sendAlf(){
-  const inp=$('#alfIn');const q=inp.value.trim();if(!q)return;inp.value='';
-  alfAppend('user',q);state.alf.push({role:'user',content:q});
-  const key=await getAlfKey();if(!key){alfAppend('bot','No API key set.');return}
-  const thinking=alfAppend('bot','…');thinking.classList.add('think');
-  try{
-    const resp=await fetch(ALF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:ALF_MODEL,max_tokens:1024,system:buildAlfContext(),stream:true,messages:state.alf.slice(-8)})});
-    if(!resp.ok){throw new Error('HTTP '+resp.status)}
-    const reader=resp.body.getReader();const dec=new TextDecoder();let buf='',out='';
-    thinking.classList.remove('think');thinking.textContent='';
-    while(true){const {done,value}=await reader.read();if(done)break;
-      buf+=dec.decode(value,{stream:true});const parts=buf.split('\n');buf=parts.pop();
-      for(const line of parts){const t=line.trim();if(!t.startsWith('data:'))continue;const payload=t.slice(5).trim();if(payload==='[DONE]')continue;
-        try{const j=JSON.parse(payload);const delta=j.delta?.text||j.content_block?.text||(j.delta&&j.delta.partial_json)||'';if(delta){out+=delta;thinking.textContent=out;$('#alfMsgs').scrollTop=1e9}}catch(e){}}
+  function frame(){
+    ctx.clearRect(0,0,w,h);
+    for(const s of stars){
+      s.ph+=s.tw; const a=s.a*(0.6+0.4*Math.sin(s.ph));
+      s.x+=s.dx; s.y+=s.dy;
+      if(s.y>h)s.y=0; if(s.x>w)s.x=0; if(s.x<0)s.x=w;
+      ctx.beginPath();
+      if(s.hue){ctx.fillStyle=`oklch(.82 .14 ${s.hue} / ${a})`;}
+      else ctx.fillStyle=`rgba(225,232,255,${a})`;
+      ctx.arc(s.x,s.y,s.r,0,6.283);ctx.fill();
     }
-    if(!out)thinking.textContent='(no response)';
-    state.alf.push({role:'assistant',content:out});
-  }catch(e){thinking.classList.remove('think');thinking.textContent='Error: '+e.message+' — check your MiniMax key.';}
-}
-
-/* ═══════════════ go ═══════════════ */
-boot();
+    maybeShoot();
+    if(shoot){
+      const g=ctx.createLinearGradient(shoot.x,shoot.y,shoot.x-shoot.vx*7,shoot.y-shoot.vy*7);
+      g.addColorStop(0,`rgba(180,220,255,${shoot.life})`);g.addColorStop(1,'rgba(180,220,255,0)');
+      ctx.strokeStyle=g;ctx.lineWidth=1.6*dpr;ctx.beginPath();
+      ctx.moveTo(shoot.x,shoot.y);ctx.lineTo(shoot.x-shoot.vx*7,shoot.y-shoot.vy*7);ctx.stroke();
+      shoot.x+=shoot.vx;shoot.y+=shoot.vy;shoot.life-=.012;
+      if(shoot.life<=0||shoot.x>w||shoot.y>h)shoot=null;
+    }
+    raf=requestAnimationFrame(frame);
+  }
+  addEventListener('resize',resize);resize();
+  if(reduce){ // draw once
+    for(const s of stars){ctx.beginPath();ctx.fillStyle=`rgba(225,232,255,${s.a})`;ctx.arc(s.x,s.y,s.r,0,6.283);ctx.fill();}
+  } else frame();
+})();
 </script>
+
+<!-- Firebase backend + Mission Control LLM bridge -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+(function(){
+  const NS='concrete-breaks';
+  try{ if(!firebase.apps.length) firebase.initializeApp({databaseURL:'https://gen-lang-client-0119642855-default-rtdb.firebaseio.com'}); }
+  catch(e){ console.error('Firebase init failed',e); }
+  const db=firebase.database();
+  // Namespaced realtime helpers used by App.jsx for the shared (multi-user) backend.
+  window.fb={
+    listen:(p,cb)=>db.ref(NS+'/'+p).on('value',s=>cb(s.val())),
+    set:(p,d)=>db.ref(NS+'/'+p).set(d),
+    update:(p,d)=>db.ref(NS+'/'+p).update(d),
+    remove:(p)=>db.ref(NS+'/'+p).remove(),
+    get:(p)=>db.ref(NS+'/'+p).once('value').then(s=>s.val()),
+    inc:(p,by)=>db.ref(NS+'/'+p).transaction(v=>(v||0)+by), // atomic point increments
+    rootGet:(p)=>db.ref(p).once('value').then(s=>s.val()),
+    rootSet:(p,d)=>db.ref(p).set(d)
+  };
+  // Mission Control LLM — MiniMax (Anthropic-compatible), key shared at ROOT config/minimax_key (same as CUP).
+  const MM_URL='https://api.minimax.io/anthropic/v1/messages', MM_MODEL='MiniMax-M2.7';
+  let mmKey=null;
+  async function getKey(){
+    if(mmKey)return mmKey;
+    mmKey=await window.fb.rootGet('config/minimax_key').catch(()=>null);
+    if(!mmKey)mmKey=localStorage.getItem('cup_alfred_key')||localStorage.getItem('cb_minimax_key');
+    if(!mmKey){mmKey=prompt('Enter MiniMax API key (saved for all apps):');if(mmKey){localStorage.setItem('cb_minimax_key',mmKey);window.fb.rootSet('config/minimax_key',mmKey).catch(()=>{});}}
+    return mmKey;
+  }
+  window.claude={complete:async(prompt)=>{
+    const key=await getKey(); if(!key) throw new Error('no MiniMax key');
+    const r=await fetch(MM_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:MM_MODEL,max_tokens:1024,messages:[{role:'user',content:prompt}]})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    return (j.content&&j.content.map(c=>c.text||'').join(''))||j.reply||'';
+  }};
+})();
+</script>
+
+<!-- React + Babel (pinned) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="assets/data.js"></script>
+<script type="text/babel" src="assets/Dino.jsx"></script>
+<script type="text/babel" src="assets/Alfred.jsx"></script>
+<script type="text/babel" src="assets/Chat.jsx"></script>
+<script type="text/babel" src="assets/Auth.jsx"></script>
+<script type="text/babel" src="assets/Leaderboard.jsx"></script>
+<script type="text/babel" src="assets/MixSelect.jsx"></script>
+<script type="text/babel" src="assets/EntryForm.jsx"></script>
+<script type="text/babel" src="assets/App.jsx"></script>
 </body>
 </html>

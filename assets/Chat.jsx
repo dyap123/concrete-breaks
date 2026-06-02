@@ -1,0 +1,168 @@
+/* ====================================================================
+   Mission Control — right slide-out assistant, wired to Claude via
+   window.claude.complete. It is given the current logged entries as
+   context so it can already answer questions about your data; the
+   full knowledge-base indexing is the planned backend step.
+==================================================================== */
+const { useState: useStateC, useRef: useRefC, useEffect: useEffectC } = React;
+
+const SUGGEST = [
+  'What does the W45C95Z2 mix tell me about 56-day strength?',
+  'Did my last entry meet design strength?',
+  'Explain ASTM C39 within-test variability.',
+  'Summarize everything I’ve logged this session.',
+];
+
+function ChatPanel({ open, onClose, entries }) {
+  const [msgs, setMsgs] = useStateC([
+    { role: 'assistant', text: 'Mission Control online. I can read what you’ve logged this session, explain mix designs, break ages, ASTM/ACI variability — or just keep you company. What do you need?' },
+  ]);
+  const [input, setInput] = useStateC('');
+  const [busy, setBusy] = useStateC(false);
+  const scrollRef = useRefC(null);
+
+  useEffectC(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [msgs, busy]);
+
+  const send = async (text) => {
+    const q = (text ?? input).trim();
+    if (!q || busy) return;
+    setInput('');
+    const next = [...msgs, { role: 'user', text: q }];
+    setMsgs(next); setBusy(true);
+
+    const ctx = buildContext(entries);
+    const convo = next.map((m) => `${m.role === 'user' ? 'Engineer' : 'Alfred'}: ${m.text}`).join('\n');
+    const prompt = `You are "Alfred", an embedded assistant inside a concrete break-test logging app used by construction QA interns. You are precise, friendly, and concise. You understand concrete: mix designs, compressive break tests at 7/28/56/90-day ages, design strength f'c, %f'c, slump, air content, water-cement ratio, ASTM C39 within-test variability, and ACI 214 control standards.
+
+When asked about logged data, use ONLY the session data below. If the data doesn't contain the answer, say so plainly. Keep answers short (2-5 sentences) unless asked to elaborate. Plain text only, no markdown headers.
+
+=== SESSION DATA ===
+${ctx}
+=== END DATA ===
+
+Conversation so far:
+${convo}
+
+Write Alfred's next reply only.`;
+
+    try {
+      const reply = await window.claude.complete(prompt);
+      setMsgs((m) => [...m, { role: 'assistant', text: (reply || '').trim() || '…' }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: 'assistant', text: 'I couldn’t reach the network just now. (Live answers need the deployed environment — the chat UI and your data are wired and ready.)' }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <div className={'chat-scrim' + (open ? ' on' : '')} onClick={onClose}></div>
+      <aside className={'chat glass' + (open ? ' on' : '')} aria-hidden={!open}>
+        <header className="chat-head">
+          <div className="chat-id">
+            <span className="chat-orb"></span>
+            <div>
+              <div className="chat-title disp">MISSION CONTROL</div>
+              <div className="chat-sub mono">{entries.length} record{entries.length === 1 ? '' : 's'} indexed · live</div>
+            </div>
+          </div>
+          <button className="chat-x" onClick={onClose} aria-label="Close">✕</button>
+        </header>
+
+        <div className="chat-scroll scrollY" ref={scrollRef}>
+          {msgs.map((m, i) => (
+            <div key={i} className={'bubble ' + m.role}>{m.text}</div>
+          ))}
+          {busy && (
+            <div className="bubble assistant typing">
+              <span></span><span></span><span></span>
+            </div>
+          )}
+          {msgs.length <= 1 && !busy && (
+            <div className="suggest">
+              {SUGGEST.map((s) => (
+                <button key={s} className="chip" onClick={() => send(s)}>{s}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="chat-input">
+          <textarea value={input} rows={1} placeholder="Ask Alfred anything…"
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
+          <button className="chat-send" disabled={busy || !input.trim()} onClick={() => send()}>↑</button>
+        </div>
+      </aside>
+
+      <style>{`
+        .chat-scrim{position:fixed;inset:0;z-index:70;background:rgba(4,7,18,.5);
+          opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(2px);}
+        .chat-scrim.on{opacity:1;pointer-events:auto;}
+        .chat{position:fixed;top:0;right:0;z-index:75;height:100%;width:min(420px,94vw);
+          display:flex;flex-direction:column;border-left:1px solid var(--line-strong);
+          transform:translateX(100%);transition:transform .36s cubic-bezier(.3,.8,.2,1);
+          box-shadow:-30px 0 70px -40px #000;}
+        .chat.on{transform:none;}
+        .chat-head{display:flex;align-items:center;justify-content:space-between;
+          padding:16px 16px 14px;border-bottom:1px solid var(--line);}
+        .chat-id{display:flex;align-items:center;gap:11px;}
+        .chat-orb{width:30px;height:30px;border-radius:50%;flex:none;
+          background:radial-gradient(circle at 35% 30%,#fff,var(--cyan) 40%,var(--violet) 90%);
+          box-shadow:0 0 18px -2px var(--glow-cyan);animation:pulseGlow 3s ease-in-out infinite;}
+        .chat-title{font-size:13px;letter-spacing:.16em;}
+        .chat-sub{font-size:10px;color:var(--ink-faint);margin-top:2px;letter-spacing:.04em;}
+        .chat-x{width:30px;height:30px;border-radius:8px;background:rgba(8,12,28,.5);
+          border:1px solid var(--line);color:var(--ink-dim);font-size:12px;}
+        .chat-x:hover{color:var(--ink);border-color:var(--line-strong);}
+        .chat-scroll{flex:1;padding:18px 16px;display:flex;flex-direction:column;gap:12px;}
+        .bubble{max-width:86%;padding:11px 14px;border-radius:15px;font-size:13.5px;line-height:1.5;
+          white-space:pre-wrap;word-wrap:break-word;animation:popIn .25s both;}
+        .bubble.assistant{align-self:flex-start;background:rgba(22,30,64,.7);
+          border:1px solid var(--line);border-bottom-left-radius:5px;color:var(--ink);}
+        .bubble.user{align-self:flex-end;border-bottom-right-radius:5px;color:#06122a;
+          background:linear-gradient(135deg,var(--cyan),oklch(.78 .12 220));font-weight:500;}
+        .bubble.typing{display:flex;gap:5px;align-items:center;}
+        .bubble.typing span{width:6px;height:6px;border-radius:50%;background:var(--ink-dim);
+          animation:pulseGlow 1s infinite;}
+        .bubble.typing span:nth-child(2){animation-delay:.18s;}
+        .bubble.typing span:nth-child(3){animation-delay:.36s;}
+        .suggest{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+        .chip{text-align:left;font-size:12px;color:var(--ink-dim);padding:9px 12px;border-radius:11px;
+          background:rgba(16,23,52,.5);border:1px solid var(--line);transition:.15s;}
+        .chip:hover{color:var(--ink);border-color:var(--line-strong);background:rgba(22,30,64,.7);}
+        .chat-input{display:flex;gap:8px;align-items:flex-end;padding:13px 14px;border-top:1px solid var(--line);}
+        .chat-input textarea{flex:1;resize:none;max-height:120px;background:rgba(8,12,28,.55);
+          border:1px solid var(--line);border-radius:13px;padding:11px 13px;font-size:13.5px;
+          outline:none;line-height:1.4;}
+        .chat-input textarea:focus{border-color:var(--line-strong);}
+        .chat-send{width:38px;height:38px;flex:none;border-radius:11px;font-size:16px;color:#06122a;
+          background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;font-weight:700;
+          box-shadow:0 0 18px -6px var(--glow-cyan);transition:.15s;}
+        .chat-send:disabled{opacity:.4;box-shadow:none;cursor:not-allowed;}
+      `}</style>
+    </>
+  );
+}
+
+function buildContext(entries) {
+  if (!entries.length) return '(No entries logged yet this session.)';
+  return entries.slice(-12).map((e, i) => {
+    const mix = window.MIX_DESIGNS.find((m) => m.code === e.mix);
+    const r = window.computeResults(e, mix);
+    const ageLine = window.BREAK_AGES.map((a) => {
+      const v = r.ages[a].avg;
+      return v !== null ? `${a}d avg ${Math.round(v)}psi` : null;
+    }).filter(Boolean).join(', ');
+    return `Record ${i + 1}: mix ${e.mix || '?'}, pour #${e.pourNumber || '?'} ${e.pourDate || ''}, ` +
+      `element ${e.element || '?'} @ ${e.area || '?'}, f'c ${r.fc || '?'}psi design age ${r.designAge || '?'}d. ` +
+      `Slump ${e.slump || '?'}in, air ${e.air}, concrete temp ${e.concreteTemp || '?'}F. ` +
+      `Breaks: ${ageLine || 'none yet'}. Met design strength: ${r.met === null ? 'n/a' : r.met ? 'YES' : 'NO'}.` +
+      (e.comments ? ` Notes: ${e.comments}` : '');
+  }).join('\n');
+}
+
+Object.assign(window, { ChatPanel });
