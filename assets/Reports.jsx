@@ -192,7 +192,8 @@ function ReportsView({ mixes, entries }) {
         <div className="rep-card glass fadeUp">
           <div className="rep-card-head"><span className="rep-eyebrow mono">◇ MIX DESIGNS</span>
             <div className="rep-allnone">
-              <button onClick={() => setSel(all)}>All</button><span>·</span><button onClick={() => setSel([all[0]])}>None</button>
+              <button className="rep-mini" onClick={() => setSel(all)}>All</button>
+              <button className="rep-mini" onClick={() => setSel([all[0]])}>None</button>
             </div>
           </div>
           <div className="rep-chips">
@@ -226,9 +227,10 @@ function ReportsView({ mixes, entries }) {
         .rep-card{border-radius:var(--r-lg);padding:20px 22px;margin-bottom:18px;border-color:var(--line-strong);}
         .rep-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
         .rep-eyebrow{font-size:10px;letter-spacing:.2em;color:var(--cyan);}
-        .rep-allnone{font-size:11px;color:var(--ink-faint);display:flex;gap:8px;align-items:center;}
-        .rep-allnone button{color:var(--ink-dim);font-family:var(--font-m);font-size:11px;}
-        .rep-allnone button:hover{color:var(--cyan);}
+        .rep-allnone{display:flex;gap:7px;align-items:center;}
+        .rep-mini{font-size:11px;font-weight:600;color:var(--ink-dim);font-family:var(--font-m);letter-spacing:.04em;
+          background:rgba(8,12,28,.5);border:1px solid var(--line);border-radius:8px;padding:5px 13px;transition:.14s;}
+        .rep-mini:hover{color:var(--cyan);border-color:var(--cyan);background:oklch(.8 .13 205/.08);}
         .rep-chips{display:flex;gap:9px;flex-wrap:wrap;}
         .rep-chip{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-faint);
           padding:9px 14px;border-radius:11px;background:rgba(8,12,28,.4);border:1px solid var(--line);

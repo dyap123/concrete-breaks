@@ -13,7 +13,8 @@ function DinoGame({ compact, user, onHi }) {
   const [over, setOver] = useState(false);
   const [score, setScore] = useState(0);
   const [hi, setHi] = useState(() => +(localStorage.getItem('dino_hi') || 0));
-  const [fs, setFs] = useState(false);
+  const [fs, setFs] = useState(false);        // native fullscreen (desktop)
+  const [expanded, setExpanded] = useState(false); // CSS overlay fallback (iPad/iOS — no Fullscreen API)
   // keep latest callback/user without restarting the game loop
   const onHiRef = useRef(onHi); onHiRef.current = onHi;
   const userRef = useRef(user); userRef.current = user;
@@ -25,9 +26,14 @@ function DinoGame({ compact, user, onHi }) {
   useEffect(() => { const h = () => setFs(!!(document.fullscreenElement || document.webkitFullscreenElement)); document.addEventListener('fullscreenchange', h); document.addEventListener('webkitfullscreenchange', h); return () => { document.removeEventListener('fullscreenchange', h); document.removeEventListener('webkitfullscreenchange', h); }; }, []);
   const toggleFs = useCallback(() => {
     const el = stageRef.current; if (!el) return;
-    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
-    else { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
-  }, []);
+    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (expanded) { setExpanded(false); return; }
+    // Prefer the native Fullscreen API; iPad/iPhone Safari lack it on non-video
+    // elements, so fall back to a CSS overlay that fills the viewport.
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) { try { const p = req.call(el); if (p && p.catch) p.catch(() => setExpanded(true)); } catch (e) { setExpanded(true); } }
+    else setExpanded(true);
+  }, [expanded]);
 
   const W = 300, H = compact ? 116 : 150, GROUND = H - 22;
 
@@ -169,21 +175,22 @@ function DinoGame({ compact, user, onHi }) {
   }, [running, over, GROUND]);
 
   return (
-    <div className="dino" onMouseDown={(e) => { e.preventDefault(); jump(); }}>
+    <div className="dino" onPointerDown={(e) => { e.preventDefault(); jump(); }}>
       <div className="dino-head">
         <span className="dino-title">⊟ BREAK RUNNER</span>
         <span className="dino-score mono">{String(score).padStart(5, '0')} · HI {String(hi).padStart(5, '0')}</span>
-        <button className="dino-fs" onClick={toggleFs} title="Fullscreen">⛶</button>
+        <button className="dino-fs" onClick={(e) => { e.stopPropagation(); toggleFs(); }} title="Fullscreen">⛶</button>
       </div>
-      <div className="dino-stage" ref={stageRef}>
+      <div className={'dino-stage' + (expanded ? ' dino-stage--full' : '')} ref={stageRef}>
         <canvas ref={canvasRef} width={W} height={H} style={{ width: '100%', height: H, display: 'block' }} />
+        {expanded && <button className="dino-exit mono" onClick={(e) => { e.stopPropagation(); setExpanded(false); }}>✕ exit</button>}
         {(!running) && (
           <div className="dino-overlay">
             <div className="dino-msg disp">{over ? 'CRUNCHED' : 'BREAK TIME'}</div>
             <button className="dino-btn" onClick={(e) => { e.stopPropagation(); start(); }}>
               {over ? '↻ Run again' : '▶ Play'}
             </button>
-            <div className="dino-hint mono">space / ↑ / click to jump</div>
+            <div className="dino-hint mono">tap / space / ↑ to jump</div>
           </div>
         )}
       </div>
@@ -201,6 +208,15 @@ function DinoGame({ compact, user, onHi }) {
           width:auto!important;height:90vh!important;max-width:98vw;image-rendering:pixelated;}
         .dino-stage:fullscreen .dino-overlay,.dino-stage:-webkit-full-screen .dino-overlay{backdrop-filter:none;}
         .dino-stage:fullscreen .dino-msg,.dino-stage:-webkit-full-screen .dino-msg{font-size:28px;}
+        /* CSS pseudo-fullscreen — fallback for iPad/iOS (no Fullscreen API on non-video) */
+        .dino-stage--full{position:fixed;inset:0;z-index:300;background:#070a16;border-radius:0;border:none;
+          display:flex;align-items:center;justify-content:center;touch-action:none;}
+        .dino-stage--full canvas{width:auto!important;height:88vh!important;max-width:98vw;image-rendering:pixelated;}
+        .dino-stage--full .dino-msg{font-size:28px;}
+        .dino-exit{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;z-index:301;
+          font-size:12px;color:var(--ink-dim);background:rgba(8,12,28,.7);border:1px solid var(--line-strong);
+          border-radius:99px;padding:8px 14px;letter-spacing:.04em;}
+        .dino-exit:hover{color:var(--ink);border-color:var(--cyan);}
         .dino-stage{position:relative;border-radius:var(--r-sm);overflow:hidden;
           background:linear-gradient(180deg,rgba(8,12,30,.6),rgba(12,18,44,.3));
           border:1px solid var(--line);cursor:pointer;}
