@@ -151,7 +151,7 @@ function DinoGame({ compact }) {
   return (
     <div className="dino" onMouseDown={(e) => { e.preventDefault(); jump(); }}>
       <div className="dino-head">
-        <span className="dino-title">⊟ ORBIT RUNNER</span>
+        <span className="dino-title">⊟ BREAK RUNNER</span>
         <span className="dino-score mono">{String(score).padStart(5, '0')} · HI {String(hi).padStart(5, '0')}</span>
       </div>
       <div className="dino-stage">

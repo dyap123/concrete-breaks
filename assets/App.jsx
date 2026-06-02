@@ -191,7 +191,7 @@ function App() {
         <div className="rail-brand">
           <span className="brand-mark"><span></span></span>
           <div>
-            <div className="brand-name disp">ORBITAL</div>
+            <div className="brand-name disp">OPENBREAK</div>
             <div className="brand-sub mono">break logger</div>
           </div>
         </div>

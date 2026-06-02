@@ -111,7 +111,7 @@ function generatePDF(mixes, entries, codes) {
   });
 
   const pages = doc.internal.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) { doc.setPage(p); doc.setFontSize(8); doc.setTextColor(110, 120, 160); doc.text(`Orbital · Break Lab    ·    ${p} / ${pages}`, W / 2, H - 18, { align: 'center' }); }
+  for (let p = 1; p <= pages; p++) { doc.setPage(p); doc.setFontSize(8); doc.setTextColor(110, 120, 160); doc.text(`OpenBreak · LACC Concrete    ·    ${p} / ${pages}`, W / 2, H - 18, { align: 'center' }); }
   doc.save(`LACC_Break_Report_${isoToday()}.pdf`);
 }
 

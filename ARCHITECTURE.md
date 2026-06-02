@@ -1,6 +1,6 @@
-# Orbital — Architecture & CS Principles
+# OpenBreak — Architecture & CS Principles
 
-A plain-English tour of the computer-science ideas behind **Orbital** (the LACC
+A plain-English tour of the computer-science ideas behind **OpenBreak** (the LACC
 concrete-break logger). It's a single-page web app with no build step, a real-time
 cloud database, and an LLM assistant. Below: what each layer is, and the principle
 that makes it work.
@@ -71,7 +71,7 @@ so the chart only rebuilds when the data really changes. This is **caching**: tr
 memory to avoid repeating work.
 
 ### 2f. Performance: the render-loop trap (the dino game)
-The Orbit Runner taught a classic lesson. The first version called React `setState` 60×/sec
+The Break Runner taught a classic lesson. The first version called React `setState` 60×/sec
 (every animation frame) — forcing 60 full re-renders/sec and stutter. The fix used three
 ideas:
 - **Throttle state updates**: only `setState` when the *integer* score changes, not every frame.
@@ -210,4 +210,4 @@ If you remember one idea from each layer:
 | Output | One model of the data, many encodings (CSV/Excel/PDF). |
 | Deployment | Optimize for iteration speed. |
 
-Every feature in Orbital is one of these principles applied to concrete (pun intended).
+Every feature in OpenBreak is one of these principles applied to concrete (pun intended).

@@ -1,4 +1,4 @@
-# Orbital — Concrete Break Logger
+# OpenBreak — Concrete Break Logger
 
 Deep-space-themed app for concrete QA interns to log cylinder break-test results against a
 chosen **mix design**, with live derived metrics and a shared **crew leaderboard**. Replaces
@@ -8,7 +8,7 @@ the 21-tab "HDH Concrete Break Result Matrix" spreadsheet. LA Convention Center.
 
 ## Stack
 - **React 18 + Babel standalone** (in-browser, no build step) — design from the Claude-design
-  "Orbital" handoff, recreated on a real backend. Static GitHub Pages deploy.
+  "OpenBreak" handoff, recreated on a real backend. Static GitHub Pages deploy.
 - **Firebase Realtime DB** (shared project `gen-lang-client-0119642855`), namespaced under
   `concrete-breaks/`. The bridge `window.fb` (in `index.html`) exposes
   `listen/set/update/remove/get/inc` (+ root variants). This makes the leaderboard, records,
@@ -60,5 +60,5 @@ cd ~/concrete-breaks && python3 -m http.server 8477   # → http://localhost:847
 - Point bonuses (e.g. completing a 56-day set) — centralize in `saveEntry`.
 
 > Note: the previous vanilla single-file build (Chart.js dashboard, xlsx/PDF export) was
-> replaced by this Orbital design. Those export/chart features can be re-added on top of the
+> replaced by this OpenBreak design. Those export/chart features can be re-added on top of the
 > same Firebase model if wanted.

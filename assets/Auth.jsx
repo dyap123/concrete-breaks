@@ -51,7 +51,7 @@ function AuthGate({ users, onSignIn, onAddUser }) {
         <div className="auth-brand">
           <span className="brand-mark big"><span></span></span>
           <div>
-            <div className="auth-title disp">ORBITAL</div>
+            <div className="auth-title disp">OPENBREAK</div>
             <div className="auth-tag mono">concrete break logger · crew sign-in</div>
           </div>
         </div>
