@@ -276,11 +276,12 @@ function ageAvg(entries, code, age) {
   return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : null;
 }
 function DashCharts({ entries, mixes }) {
+  const all = mixes.map((m) => m.code);
   const logged = [...new Set(entries.map((e) => e.mix).filter(Boolean))];
-  const [sel, setSel] = React.useState(logged[0] || '');
-  const [cmp, setCmp] = React.useState(logged);
-  React.useEffect(() => { if (!logged.includes(sel) && logged[0]) setSel(logged[0]); }, [logged.join()]);
-  React.useEffect(() => { setCmp((p) => { const f = p.filter((c) => logged.includes(c)); return f.length ? f : logged; }); }, [logged.join()]);
+  const [sel, setSel] = React.useState(logged[0] || all[0] || '');
+  const [cmp, setCmp] = React.useState(logged.length ? logged : all.slice(0, 4));
+  React.useEffect(() => { if (!all.includes(sel) && all[0]) setSel(all[0]); }, [all.join()]);
+  React.useEffect(() => { setCmp((p) => { const f = p.filter((c) => all.includes(c)); return f.length ? f : (logged.length ? logged : all.slice(0, 4)); }); }, [all.join()]);
   if (!entries.length) return null;
   const ages = (() => { const s = new Set(); entries.forEach((e) => window.entryAges(e).forEach((a) => s.add(a))); window.BREAK_AGES.forEach((a) => s.add(a)); return [...s].sort((x, y) => x - y); })();
   const labels = ages.map((a) => a + '-day');
@@ -305,7 +306,7 @@ function DashCharts({ entries, mixes }) {
   const cmpData = {
     labels,
     datasets: cmp.map((code) => { const col = colorFor(code);
-      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: col, backgroundColor: col, tension: 0.35, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, fill: false }; }),
+      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: col, backgroundColor: window.lineAreaGrad(col), pointBackgroundColor: col, pointBorderColor: '#0a0f22', pointBorderWidth: 1.5, tension: 0.4, spanGaps: true, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3, fill: true }; }),
   };
   const cmpOpts = {
     plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${(c.parsed.y || 0).toLocaleString()} psi` } } },
@@ -317,7 +318,7 @@ function DashCharts({ entries, mixes }) {
         <div className="dash-chart-head">
           <div><div className="dash-eyebrow mono">◇ STRENGTH BY AGE</div><h3 className="disp">{sel || '—'}{fc ? <span className="dash-fc mono"> · f'c {fc.toLocaleString()}</span> : ''}</h3></div>
           <select className="dash-sel mono" value={sel} onChange={(e) => setSel(e.target.value)}>
-            {logged.map((c) => <option key={c} value={c}>{c}</option>)}
+            {all.map((c) => <option key={c} value={c}>{c}{logged.includes(c) ? '' : ' (no data)'}</option>)}
           </select>
         </div>
         <window.ChartCanvas type="bar" data={barData} options={barOpts} height={360} />
@@ -331,9 +332,9 @@ function DashCharts({ entries, mixes }) {
         </div>
         <div className="cmp-chips">
           <span className="cmp-label mono">compare:</span>
-          {logged.map((code) => { const on = cmp.includes(code);
+          {all.map((code) => { const on = cmp.includes(code);
             return (
-              <button key={code} className={'cmp-chip' + (on ? ' on' : '')} style={{ '--c': colorFor(code) }} onClick={() => toggle(code)}>
+              <button key={code} className={'cmp-chip' + (on ? ' on' : '') + (logged.includes(code) ? '' : ' nodata')} style={{ '--c': colorFor(code) }} onClick={() => toggle(code)}>
                 <span className="cmp-dot"></span>{code}
               </button>
             ); })}
@@ -622,6 +623,8 @@ function AppStyles() {
     .cmp-chip.on{color:var(--ink);border-color:var(--c);background:color-mix(in oklch,var(--c) 12%,transparent);
       box-shadow:0 0 16px -8px var(--c);}
     .cmp-chip.on .cmp-dot{opacity:1;box-shadow:0 0 8px var(--c);}
+    .cmp-chip.nodata{opacity:.5;}
+    .cmp-chip.nodata.on{opacity:.8;}
     .rec-list{display:flex;flex-direction:column;gap:12px;}
     .rec-card{position:relative;display:grid;
       grid-template-columns:160px 1fr auto auto;gap:18px;align-items:center;
