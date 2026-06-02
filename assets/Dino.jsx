@@ -18,7 +18,7 @@ function DinoGame({ compact }) {
   const reset = useCallback(() => {
     stateRef.current = {
       dy: 0, y: GROUND, jumping: false, ducking: false,
-      obstacles: [], t: 0, speed: 4.2, spawn: 70, score: 0, alive: true,
+      obstacles: [], t: 0, speed: 4.6, spawnT: 40, score: 0, alive: true,
       stars: Array.from({ length: 18 }, () => ({
         x: Math.random() * W, y: Math.random() * (GROUND - 10),
         r: Math.random() * 1.2 + .3, a: Math.random() * .5 + .2,
@@ -50,92 +50,83 @@ function DinoGame({ compact }) {
 
   useEffect(() => {
     if (!running) return;
-    const ctx = canvasRef.current.getContext('2d');
-    let raf;
-    const css = getComputedStyle(document.documentElement);
-    const cyan = css.getPropertyValue('--cyan') || '#5fd';
-    const magenta = css.getPropertyValue('--magenta') || '#e5c';
+    const ctx = canvasRef.current.getContext('2d', { alpha: false });
+    let raf, last = performance.now(), lastScoreInt = -1;
+    // Solid obstacle fill (no per-frame gradient / no shadowBlur — both are
+    // expensive on weak GPUs and were the main cause of the stutter).
+    const magenta = 'oklch(.66 .18 330)';
     const ink = '#e8ecff';
 
-    const loop = () => {
+    const loop = (now) => {
       const s = stateRef.current;
       if (!s) return;
-      s.t++;
+      // delta-time step (frames normalised to 60fps) so speed is identical
+      // whether the machine runs at 60, 30, or anything in between.
+      let dt = (now - last) / 16.667; last = now;
+      if (dt > 3) dt = 3;            // clamp after a tab stall
+      s.t += dt;
+
       // physics
-      s.dy += 0.62; s.y += s.dy;
+      s.dy += 0.62 * dt; s.y += s.dy * dt;
       if (s.y >= GROUND) { s.y = GROUND; s.dy = 0; s.jumping = false; }
-      // spawn
-      if (s.t % Math.round(s.spawn) === 0) {
+
+      // time-based spawn (works with fractional dt)
+      s.spawnT = (s.spawnT || 0) - dt;
+      if (s.spawnT <= 0) {
         const tall = Math.random() < .35;
         s.obstacles.push({ x: W + 10, w: tall ? 12 : 16, h: tall ? 30 : 20 });
-        s.spawn = Math.max(42, 72 - s.score * .04 + Math.random() * 18);
+        s.spawnT = Math.max(42, 74 - s.score * .04 + Math.random() * 18);
       }
-      s.speed = 4.2 + s.score * 0.004;
-      s.obstacles.forEach((o) => { o.x -= s.speed; });
+      s.speed = 4.6 + s.score * 0.004;
+      s.obstacles.forEach((o) => { o.x -= s.speed * dt; });
       s.obstacles = s.obstacles.filter((o) => o.x + o.w > -4);
-      s.score += 0.18;
+      s.score += 0.20 * dt;
 
-      // collision (dino box ~ x 26..50)
-      const dx0 = 26, dx1 = 48, dyTop = s.y - 26, dyBot = s.y;
+      // collision
+      const dx0 = 26, dx1 = 48, dyBot = s.y;
       for (const o of s.obstacles) {
         const oy = GROUND - o.h;
-        if (dx1 > o.x + 2 && dx0 < o.x + o.w - 2 && dyBot > oy + 2) {
-          s.alive = false; break;
-        }
+        if (dx1 > o.x + 2 && dx0 < o.x + o.w - 2 && dyBot > oy + 2) { s.alive = false; break; }
       }
 
-      // ---- draw ----
-      ctx.clearRect(0, 0, W, H);
-      // faint stars
+      // ---- draw (opaque bg, flat fills, no blur) ----
+      ctx.fillStyle = '#0b1026'; ctx.fillRect(0, 0, W, H);
       s.stars.forEach((st) => {
-        st.x -= s.speed * .25; if (st.x < 0) st.x = W;
+        st.x -= s.speed * .25 * dt; if (st.x < 0) st.x = W;
         ctx.fillStyle = `rgba(180,200,255,${st.a})`;
         ctx.fillRect(st.x, st.y, st.r, st.r);
       });
-      // ground line
-      ctx.strokeStyle = 'rgba(140,165,255,.35)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(140,165,255,.35)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(0, GROUND + 1); ctx.lineTo(W, GROUND + 1); ctx.stroke();
-      // ground ticks (parallax)
       ctx.fillStyle = 'rgba(140,165,255,.22)';
       for (let i = 0; i < 8; i++) {
         const gx = (W - ((s.t * s.speed * .6 + i * 46) % (W + 46)));
         ctx.fillRect(gx, GROUND + 6, 10, 2);
       }
-      // obstacles (crystal cacti)
+      ctx.fillStyle = magenta;
       s.obstacles.forEach((o) => {
         const oy = GROUND - o.h;
-        const g = ctx.createLinearGradient(o.x, oy, o.x, GROUND);
-        g.addColorStop(0, magenta); g.addColorStop(1, 'oklch(.5 .16 320)');
-        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.moveTo(o.x + o.w / 2, oy);
-        ctx.lineTo(o.x + o.w, GROUND);
-        ctx.lineTo(o.x, GROUND);
+        ctx.moveTo(o.x + o.w / 2, oy); ctx.lineTo(o.x + o.w, GROUND); ctx.lineTo(o.x, GROUND);
         ctx.closePath(); ctx.fill();
       });
-      // dino (rounded glowing block runner)
       const bob = s.jumping ? 0 : Math.sin(s.t * .3) * 1.2;
-      ctx.save();
-      ctx.shadowColor = cyan; ctx.shadowBlur = 10;
       ctx.fillStyle = ink;
       roundRect(ctx, 26, s.y - 26 + bob, 22, 26, 5); ctx.fill();
-      ctx.restore();
-      // eye
-      ctx.fillStyle = '#0a0f22';
-      ctx.fillRect(41, s.y - 21 + bob, 3, 3);
-      // legs
+      ctx.fillStyle = '#0a0f22'; ctx.fillRect(41, s.y - 21 + bob, 3, 3);
       if (!s.jumping) {
         ctx.fillStyle = ink;
         const ph = Math.floor(s.t / 6) % 2;
-        ctx.fillRect(29, s.y, 5, 4 - ph * 0);
+        ctx.fillRect(29, s.y, 5, 4);
         ctx.fillRect(40 - ph * 2, s.y, 5, 4);
       }
 
-      setScore(Math.floor(s.score));
+      // only re-render React when the displayed integer score changes
+      const si = Math.floor(s.score);
+      if (si !== lastScoreInt) { lastScoreInt = si; setScore(si); }
       if (!s.alive) {
         setRunning(false); setOver(true);
-        const hs = Math.max(hi, Math.floor(s.score));
+        const hs = Math.max(hi, si);
         setHi(hs); localStorage.setItem('dino_hi', hs);
         return;
       }

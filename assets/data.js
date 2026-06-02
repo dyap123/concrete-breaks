@@ -32,19 +32,22 @@ const MIX_DESIGNS = [
 ].map((m) => ({ ...m, accent: accentForStrength(m.fc) }));
 
 /* ---- Reference option lists -------------------------------------- */
-const AREAS = ['Pile Caps', 'Deck', 'Backfill', 'Warehouse', 'Area 3', 'Area 56', 'B1L', 'TPL', 'Other'];
+const AREAS = ['Sequence 1', 'Sequence 2', 'Sequence 3', 'Sequence 4', 'South Hall', 'CUP', 'Area A', 'Area B', 'Area C', 'Area D', 'Other'];
 const ELEMENTS = [
   'Pile Cap', 'Foundation', 'Wall', 'Slab', 'Footing', 'Mild Deck',
   'Horizontal Rat Slab', 'Protection Slab', 'Sump Pit Slab', 'Column', 'Backfill', 'Other',
 ];
 const AIR_OPTS = ['N/I', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0', '5.5', '6.0'];
-/* admixtures captured per load (oz/load) */
-const ADMIXTURES = [
-  { key: 'pozzolith', label: 'Pozzolith' },
-  { key: 'glenium',   label: 'Glenium' },
-  { key: 'adva',      label: 'ADVA' },
-  { key: 'delvo',     label: 'Delvo' },
+/* Default admixtures — interns/managers can rename, change unit, add or
+   remove these in the entry form; the live list is shared via Firebase.
+   Per-entry values live in entry.admx[key]. */
+const DEFAULT_ADMIXTURES = [
+  { key: 'pozzolith', label: 'Pozzolith', unit: 'oz' },
+  { key: 'glenium',   label: 'Glenium',   unit: 'oz' },
+  { key: 'adva',      label: 'ADVA',      unit: 'oz' },
+  { key: 'delvo',     label: 'Delvo',     unit: 'oz' },
 ];
+const ADMIXTURES = DEFAULT_ADMIXTURES; // back-compat alias
 /* break ages to capture — each holds a test date + three cylinder breaks */
 const BREAK_AGES = [7, 28, 56, 90];
 
@@ -142,7 +145,8 @@ function computeResults(entry, mix) {
   const ages = {};
   let designAvg = null;
   BREAK_AGES.forEach((age) => {
-    const cyl = [entry[`d${age}_1`], entry[`d${age}_2`], entry[`d${age}_3`]];
+    const cyl = Array.isArray(entry['d' + age]) ? entry['d' + age]
+      : [entry['d' + age + '_1'], entry['d' + age + '_2'], entry['d' + age + '_3']]; // legacy fallback
     const a = avg(cyl);
     ages[age] = {
       cyl, avg: a,
@@ -169,7 +173,8 @@ function computeResults(entry, mix) {
   };
 }
 
-/* A blank entry record. */
+/* A blank entry record. Cylinders are arrays (add as many as you like);
+   admixture values live in e.admx keyed by admixture key. */
 function blankEntry(mix) {
   const e = {
     id: 'E' + Math.random().toString(36).slice(2, 9),
@@ -186,55 +191,51 @@ function blankEntry(mix) {
     batchTime: '',
     sampleTime: '',
     ambient: '',
-    concreteTemp: '',
     slump: '',
     air: 'N/I',
     actualWC: '',
     ncr: false,
     graphed: false,
     comments: '',
+    admx: {},
   };
   BREAK_AGES.forEach((age) => {
     e[`d${age}_date`] = '';
-    e[`d${age}_1`] = '';
-    e[`d${age}_2`] = '';
-    e[`d${age}_3`] = '';
+    e[`d${age}`] = ['', '', ''];
   });
-  ADMIXTURES.forEach((a) => { e[a.key] = ''; });
   return e;
 }
 
-/* CSV column order mirrors the workbook's INPUT sheet ordering. */
-const CSV_COLUMNS = [
-  ['ncr', 'NCR?'], ['graphed', 'Graphed?'], ['pourNumber', 'Pour Number'],
-  ['pourDate', 'Pour Date'], ['ir', 'IR#'], ['ticket', 'Batch Ticket #'],
-  ['batchTime', 'Batch Time'], ['sampleTime', 'Sample Time'],
-  ['area', 'Area'], ['element', 'Element'], ['age', 'Design Days'],
-  ['mix', 'Mix Design'], ['ambient', 'Ambient Temp'], ['concreteTemp', 'Concrete Temp'],
-  ['slump', 'Actual Slump'], ['air', 'Air Content'], ['fc', 'Design Strength'],
-  ['d7_date', '7 Day Test Date'], ['d7_1', '7D Str 1'], ['d7_2', '7D Str 2'], ['d7_3', '7D Str 3'],
-  ['d28_date', '28 Day Test Date'], ['d28_1', '28D Str 1'], ['d28_2', '28D Str 2'], ['d28_3', '28D Str 3'],
-  ['d56_date', '56 Day Test Date'], ['d56_1', '56D Str 1'], ['d56_2', '56D Str 2'], ['d56_3', '56D Str 3'],
-  ['d90_date', '90 Day Test Date'], ['d90_1', '90D Str 1'], ['d90_2', '90D Str 2'], ['d90_3', '90D Str 3'],
-  ['actualWC', 'Actual W/C'],
-  ['pozzolith', 'Pozzolith'], ['glenium', 'Glenium'], ['adva', 'ADVA'], ['delvo', 'Delvo'],
-  ['comments', 'Comments'],
-];
-
-function entriesToCSV(entries) {
-  const head = CSV_COLUMNS.map((c) => c[1]).join(',');
-  const esc = (v) => {
-    const s = String(v ?? '');
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const rows = entries.map((e) =>
-    CSV_COLUMNS.map(([k]) => {
-      let v = e[k];
-      if (typeof v === 'boolean') v = v ? 'YES' : '';
-      return esc(v);
-    }).join(','),
-  );
-  return [head, ...rows].join('\n');
+/* CSV export — columns mirror the workbook INPUT sheet, but cylinder and
+   admixture columns expand to whatever the data needs (variable # of
+   cylinders per age, custom admixtures). Pass the live admixtures list. */
+function entriesToCSV(entries, admixtures) {
+  admixtures = admixtures || DEFAULT_ADMIXTURES;
+  const cylArr = (e, age) => Array.isArray(e['d' + age]) ? e['d' + age]
+    : [e['d' + age + '_1'], e['d' + age + '_2'], e['d' + age + '_3']];
+  const maxCyl = {};
+  BREAK_AGES.forEach((age) => {
+    maxCyl[age] = 3;
+    entries.forEach((e) => { maxCyl[age] = Math.max(maxCyl[age], cylArr(e, age).length); });
+  });
+  const cols = [
+    ['NCR?', (e) => e.ncr ? 'YES' : ''], ['Graphed?', (e) => e.graphed ? 'YES' : ''],
+    ['Pour Number', (e) => e.pourNumber], ['Pour Date', (e) => e.pourDate],
+    ['IR#', (e) => e.ir], ['Batch Ticket #', (e) => e.ticket],
+    ['Batch Time', (e) => e.batchTime], ['Sample Time', (e) => e.sampleTime],
+    ['Area', (e) => e.area], ['Element', (e) => e.element], ['Design Days', (e) => e.age],
+    ['Mix Design', (e) => e.mix], ['Ambient Temp', (e) => e.ambient],
+    ['Actual Slump', (e) => e.slump], ['Air Content', (e) => e.air], ['Design Strength', (e) => e.fc],
+  ];
+  BREAK_AGES.forEach((age) => {
+    cols.push([age + ' Day Test Date', (e) => e['d' + age + '_date']]);
+    for (let i = 0; i < maxCyl[age]; i++) cols.push([age + 'D Str ' + (i + 1), (e) => cylArr(e, age)[i] ?? '']);
+  });
+  cols.push(['Actual W/C', (e) => e.actualWC]);
+  admixtures.forEach((a) => cols.push([a.label + (a.unit ? ` (${a.unit})` : ''), (e) => (e.admx && e.admx[a.key]) || '']));
+  cols.push(['Comments', (e) => e.comments]);
+  const esc = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return [cols.map((c) => esc(c[0])).join(','), ...entries.map((e) => cols.map((c) => esc(c[1](e))).join(','))].join('\n');
 }
 
 /* ---- Crew / leaderboard helpers ---------------------------------- */
@@ -271,7 +272,7 @@ function initials(name) {
 Object.assign(window, {
   MIX_DESIGNS, AREAS, ELEMENTS, AIR_OPTS, ADMIXTURES, BREAK_AGES,
   num, avg, range, stdev, cov, c39Verdict, elapsedHrs, addDays,
-  isoToSerial, fmt, computeResults, blankEntry, CSV_COLUMNS, entriesToCSV,
+  isoToSerial, fmt, computeResults, blankEntry, entriesToCSV,
   RANKS, rankFor, nextRank, hueFromName, initials,
-  accentForStrength, strengthTier,
+  accentForStrength, strengthTier, DEFAULT_ADMIXTURES,
 });

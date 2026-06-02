@@ -7,7 +7,7 @@
 const { useState: useStateC, useRef: useRefC, useEffect: useEffectC } = React;
 
 const SUGGEST = [
-  'What does the W45C95Z2 mix tell me about 56-day strength?',
+  'What does the O74C735K1 mix tell me about 28-day strength?',
   'Did my last entry meet design strength?',
   'Explain ASTM C39 within-test variability.',
   'Summarize everything I’ve logged this session.',
@@ -15,7 +15,7 @@ const SUGGEST = [
 
 function ChatPanel({ open, onClose, entries }) {
   const [msgs, setMsgs] = useStateC([
-    { role: 'assistant', text: 'Mission Control online. I can read what you’ve logged this session, explain mix designs, break ages, ASTM/ACI variability — or just keep you company. What do you need?' },
+    { role: 'assistant', text: 'Hey — Alfred here. I can read what you’ve logged, explain mix designs, break ages, ASTM/ACI variability, or just talk shop. What do you need?' },
   ]);
   const [input, setInput] = useStateC('');
   const [busy, setBusy] = useStateC(false);
@@ -65,8 +65,8 @@ Write Alfred's next reply only.`;
           <div className="chat-id">
             <span className="chat-orb"></span>
             <div>
-              <div className="chat-title disp">MISSION CONTROL</div>
-              <div className="chat-sub mono">{entries.length} record{entries.length === 1 ? '' : 's'} indexed · live</div>
+              <div className="chat-title disp">ALFRED</div>
+              <div className="chat-sub mono">{entries.length} record{entries.length === 1 ? '' : 's'} in the brain · live</div>
             </div>
           </div>
           <button className="chat-x" onClick={onClose} aria-label="Close">✕</button>
@@ -110,9 +110,11 @@ Write Alfred's next reply only.`;
         .chat-head{display:flex;align-items:center;justify-content:space-between;
           padding:16px 16px 14px;border-bottom:1px solid var(--line);}
         .chat-id{display:flex;align-items:center;gap:11px;}
+        /* OpenYap node-brain orb — green→blue, a little node cluster glow */
         .chat-orb{width:30px;height:30px;border-radius:50%;flex:none;
-          background:radial-gradient(circle at 35% 30%,#fff,var(--cyan) 40%,var(--violet) 90%);
-          box-shadow:0 0 18px -2px var(--glow-cyan);animation:pulseGlow 3s ease-in-out infinite;}
+          background:radial-gradient(circle at 32% 28%,#eafff5,var(--green) 38%,var(--blue) 95%),
+            radial-gradient(circle at 70% 72%,oklch(.8 .15 155/.7),transparent 40%);
+          box-shadow:0 0 18px -2px oklch(.8 .15 155/.45);animation:pulseGlow 3s ease-in-out infinite;}
         .chat-title{font-size:13px;letter-spacing:.16em;}
         .chat-sub{font-size:10px;color:var(--ink-faint);margin-top:2px;letter-spacing:.04em;}
         .chat-x{width:30px;height:30px;border-radius:8px;background:rgba(8,12,28,.5);
@@ -159,7 +161,7 @@ function buildContext(entries) {
     }).filter(Boolean).join(', ');
     return `Record ${i + 1}: mix ${e.mix || '?'}, pour #${e.pourNumber || '?'} ${e.pourDate || ''}, ` +
       `element ${e.element || '?'} @ ${e.area || '?'}, f'c ${r.fc || '?'}psi design age ${r.designAge || '?'}d. ` +
-      `Slump ${e.slump || '?'}in, air ${e.air}, concrete temp ${e.concreteTemp || '?'}F. ` +
+      `Slump ${e.slump || '?'}in, air ${e.air}, ambient ${e.ambient || '?'}F. ` +
       `Breaks: ${ageLine || 'none yet'}. Met design strength: ${r.met === null ? 'n/a' : r.met ? 'YES' : 'NO'}.` +
       (e.comments ? ` Notes: ${e.comments}` : '');
   }).join('\n');

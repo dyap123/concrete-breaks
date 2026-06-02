@@ -22,30 +22,33 @@ const Sel = ({ options, ...p }) => (
 
 /* ---- cylinder break trio with live average ----------------------- */
 function BreakRow({ age, entry, set, mix, fc }) {
-  const cyl = [entry[`d${age}_1`], entry[`d${age}_2`], entry[`d${age}_3`]];
+  const cyl = Array.isArray(entry['d' + age]) ? entry['d' + age] : ['', '', ''];
   const a = window.avg(cyl);
   const verdict = window.c39Verdict(cyl);
   const pct = a !== null && fc ? (a / fc) * 100 : null;
   const isDesign = age === (window.num(entry.age) ?? mix?.age);
-  const suggest = entry.pourDate ? window.addDays(entry.pourDate, age) : '';
+  const setCyl = (i, v) => { const next = cyl.slice(); next[i] = v; set('d' + age, next); };
+  const addCyl = () => set('d' + age, [...cyl, '']);
+  const removeCyl = (i) => { if (cyl.length > 1) set('d' + age, cyl.filter((_, k) => k !== i)); };
   return (
     <div className={'brk' + (isDesign ? ' design' : '')}>
       <div className="brk-head">
         <span className="brk-age disp">{age}<span>day</span></span>
         {isDesign && <span className="brk-tag mono">DESIGN AGE</span>}
-        <input className="inp brk-date" type="date" value={entry[`d${age}_date`]}
-          onChange={(e) => set(`d${age}_date`, e.target.value)} />
-        {suggest && entry[`d${age}_date`] !== suggest && (
-          <button className="brk-sg mono" title="Use pour date + age"
-            onClick={() => set(`d${age}_date`, suggest)}>≈ {suggest.slice(5)}</button>
-        )}
+        <input className="inp brk-date" type="date" value={entry[`d${age}_date`] || ''}
+          onChange={(e) => set(`d${age}_date`, e.target.value)} title="auto-filled from pour date" />
       </div>
       <div className="brk-cyls">
-        {[1, 2, 3].map((n) => (
-          <input key={n} className="inp brk-cyl mono" type="number" inputMode="numeric"
-            placeholder={`cyl ${n}`} value={entry[`d${age}_${n}`]}
-            onChange={(e) => set(`d${age}_${n}`, e.target.value)} />
-        ))}
+        <div className="brk-cyl-grid">
+          {cyl.map((v, i) => (
+            <div className="brk-cylbox" key={i}>
+              <input className="inp brk-cyl mono" type="number" inputMode="numeric"
+                placeholder={`cyl ${i + 1}`} value={v} onChange={(e) => setCyl(i, e.target.value)} />
+              {cyl.length > 1 && <button className="brk-cyl-x" title="remove cylinder" onClick={() => removeCyl(i)}>×</button>}
+            </div>
+          ))}
+          <button className="brk-addcyl mono" onClick={addCyl} title="add a cylinder">+ cyl</button>
+        </div>
         <div className="brk-out">
           <span className="brk-avg mono">{a !== null ? window.fmt(a) : '—'}</span>
           <span className="brk-avglab mono">avg psi</span>
@@ -167,12 +170,34 @@ function Stat({ label, value, hint }) {
 }
 
 /* ---- the form ---------------------------------------------------- */
-function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix }) {
+function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtures, onAdmixtures }) {
   const [entry, setEntry] = useStateE(initial);
   useEffectE(() => setEntry(initial), [initial.id]);
   const set = (k, v) => setEntry((e) => ({ ...e, [k]: v }));
   const fc = window.num(entry.fc) ?? mix?.fc;
   const res = useMemoE(() => window.computeResults(entry, mix), [entry, mix]);
+  const admx = admixtures || window.DEFAULT_ADMIXTURES;
+
+  /* Auto-populate each break age's test date from the pour date (pour + age
+     days), filling only empty fields so manual edits stick. So entering the
+     pour date instantly gives you the 7 / 28 / 56 / 90-day test dates. */
+  useEffectE(() => {
+    if (!entry.pourDate) return;
+    setEntry((e) => {
+      let changed = false; const next = { ...e };
+      window.BREAK_AGES.forEach((age) => {
+        if (!e['d' + age + '_date']) { next['d' + age + '_date'] = window.addDays(e.pourDate, age); changed = true; }
+      });
+      return changed ? next : e;
+    });
+  }, [entry.pourDate]);
+
+  /* per-entry admixture value */
+  const setAdmx = (key, v) => setEntry((e) => ({ ...e, admx: { ...(e.admx || {}), [key]: v } }));
+  /* shared admixture-list edits (rename / unit / add / remove) */
+  const updateAdmix = (idx, field, v) => onAdmixtures(admx.map((a, i) => i === idx ? { ...a, [field]: v } : a));
+  const removeAdmix = (idx) => onAdmixtures(admx.filter((_, i) => i !== idx));
+  const addAdmix = () => onAdmixtures([...admx, { key: 'adm_' + Math.random().toString(36).slice(2, 7), label: 'New admixture', unit: 'oz' }]);
 
   return (
     <div className="ef scrollY">
@@ -212,7 +237,6 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix }) {
                   <div className="inp ro-readonly mono">{res.elapsed !== null ? window.fmt(res.elapsed, 2) + ' h' : '—'}</div>
                 </Field>
                 <Field label="Ambient temp" unit="°F"><T type="number" value={entry.ambient} onChange={(e) => set('ambient', e.target.value)} className="inp mono" /></Field>
-                <Field label="Concrete temp" unit="°F"><T type="number" value={entry.concreteTemp} onChange={(e) => set('concreteTemp', e.target.value)} className="inp mono" /></Field>
                 <Field label="Actual slump" unit="in"><T type="number" step="0.25" value={entry.slump} onChange={(e) => set('slump', e.target.value)} className="inp mono" /></Field>
                 <Field label="Air content" unit="%"><Sel options={window.AIR_OPTS} value={entry.air} onChange={(e) => set('air', e.target.value)} /></Field>
                 <Field label="Actual W/C ratio"><T type="number" step="0.01" value={entry.actualWC} onChange={(e) => set('actualWC', e.target.value)} className="inp mono" placeholder="0.45" /></Field>
@@ -229,13 +253,18 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix }) {
             </Section>
 
             {/* ---- Admixtures & notes ---- */}
-            <Section n="04" title="Admixtures & notes" hint="oz / load">
-              <div className="grid4">
-                {window.ADMIXTURES.map((a) => (
-                  <Field key={a.key} label={a.label} unit="oz">
-                    <T type="number" value={entry[a.key]} onChange={(e) => set(a.key, e.target.value)} className="inp mono" placeholder="0" />
-                  </Field>
+            <Section n="04" title="Admixtures & notes" hint="editable — rename, set unit, add or remove">
+              <div className="admx-list">
+                <div className="admx-head mono"><span>Admixture</span><span>Unit</span><span>Per load</span><span></span></div>
+                {admx.map((a, idx) => (
+                  <div className="admx-row" key={a.key}>
+                    <input className="inp admx-name" value={a.label} onChange={(e) => updateAdmix(idx, 'label', e.target.value)} placeholder="name" />
+                    <input className="inp admx-unit mono" value={a.unit || ''} onChange={(e) => updateAdmix(idx, 'unit', e.target.value)} placeholder="oz" />
+                    <input className="inp admx-val mono" type="number" value={(entry.admx && entry.admx[a.key]) || ''} onChange={(e) => setAdmx(a.key, e.target.value)} placeholder="0" />
+                    <button className="admx-x" title="remove admixture" onClick={() => removeAdmix(idx)}>×</button>
+                  </div>
                 ))}
+                <button className="admx-add" onClick={addAdmix}>+ Add admixture</button>
               </div>
               <Field label="Comments" wide>
                 <textarea className="inp ta" rows={2} value={entry.comments} onChange={(e) => set('comments', e.target.value)} placeholder="anomalies, NCR detail, weather, finishing notes…" />
@@ -338,10 +367,31 @@ function FormStyles() {
     .brk-sg{font-size:10px;color:var(--ink-dim);background:rgba(16,23,52,.6);border:1px solid var(--line);
       border-radius:7px;padding:5px 8px;}
     .brk-sg:hover{color:var(--cyan);border-color:var(--cyan);}
-    .brk-cyls{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:9px;align-items:center;}
-    .brk-cyl{text-align:center;}
+    .brk-cyls{display:flex;gap:9px;align-items:center;}
+    .brk-cyl-grid{display:flex;flex-wrap:wrap;gap:8px;flex:1;align-items:center;}
+    .brk-cylbox{position:relative;width:84px;}
+    .brk-cyl{text-align:center;width:100%;}
+    .brk-cyl-x{position:absolute;top:-6px;right:-5px;width:16px;height:16px;border-radius:50%;
+      background:var(--space-700);border:1px solid var(--line-strong);color:var(--ink-faint);
+      font-size:10px;line-height:1;display:grid;place-items:center;opacity:0;transition:.12s;}
+    .brk-cylbox:hover .brk-cyl-x{opacity:1;}
+    .brk-cyl-x:hover{color:var(--red);border-color:var(--red);}
+    .brk-addcyl{font-size:11px;color:var(--cyan);background:oklch(.8 .13 205/.08);
+      border:1px dashed oklch(.8 .13 205/.4);border-radius:9px;padding:9px 11px;transition:.15s;white-space:nowrap;}
+    .brk-addcyl:hover{background:oklch(.8 .13 205/.16);border-style:solid;}
     .brk-out{display:flex;flex-direction:column;align-items:center;min-width:78px;padding:4px 12px;
       border-left:1px solid var(--line);}
+    /* editable admixtures */
+    .admx-list{display:flex;flex-direction:column;gap:7px;}
+    .admx-head{display:grid;grid-template-columns:1fr 70px 90px 26px;gap:9px;font-size:9px;
+      letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding:0 2px;}
+    .admx-row{display:grid;grid-template-columns:1fr 70px 90px 26px;gap:9px;align-items:center;}
+    .admx-x{width:26px;height:26px;border-radius:7px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+      color:var(--ink-faint);font-size:13px;transition:.12s;}
+    .admx-x:hover{color:var(--red);border-color:var(--red);}
+    .admx-add{align-self:flex-start;margin-top:3px;font-size:12px;color:var(--cyan);
+      background:oklch(.8 .13 205/.08);border:1px dashed oklch(.8 .13 205/.4);border-radius:9px;padding:8px 13px;transition:.15s;}
+    .admx-add:hover{background:oklch(.8 .13 205/.16);border-style:solid;}
     .brk-avg{font-size:17px;color:var(--ink);font-weight:500;}
     .brk-avglab{font-size:8.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;}
     .brk-foot{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap;}

@@ -25,6 +25,7 @@ function App() {
   const [chatOpen, setChatOpen] = useStateApp(false);
   const [paletteOpen, setPaletteOpen] = useStateApp(false);
   const [toast, setToast] = useStateApp(null);
+  const [admixtures, setAdmixtures] = useStateApp(window.DEFAULT_ADMIXTURES);
 
   const mixes = useMemoApp(() => [...window.MIX_DESIGNS, ...customMixes], [customMixes]);
 
@@ -37,7 +38,12 @@ function App() {
       if (!list.length) { fb.set('users/u_danzel', SEED_MANAGER); return; } // seed manager once
       setUsers(list);
     });
+    fb.listen('admixtures', (v) => {
+      if (!v) { fb.set('admixtures', window.DEFAULT_ADMIXTURES); return; } // seed once
+      setAdmixtures(Array.isArray(v) ? v : Object.values(v));
+    });
   }, []);
+  const saveAdmixtures = useCbApp((list) => { setAdmixtures(list); fb.set('admixtures', list); }, []);
 
   useEffectApp(() => {
     if (currentId) localStorage.setItem(LS_CURRENT, currentId);
@@ -91,22 +97,22 @@ function App() {
   /* ---- export ---- */
   const exportCSV = useCbApp(() => {
     if (!entries.length) { flash('No records to export yet'); return; }
-    const csv = window.entriesToCSV(entries);
+    const csv = window.entriesToCSV(entries, admixtures);
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `break-records-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
     flash(`Exported ${entries.length} record${entries.length === 1 ? '' : 's'} → CSV`);
-  }, [entries, flash]);
+  }, [entries, flash, admixtures]);
 
   const copyTSV = useCbApp(async () => {
     if (!entries.length) { flash('No records to copy'); return; }
-    const tsv = window.entriesToCSV(entries).split('\n')
+    const tsv = window.entriesToCSV(entries, admixtures).split('\n')
       .map((line) => line.replace(/","/g, '\t').replace(/^"|"$/g, '').replace(/,/g, '\t')).join('\n');
     try { await navigator.clipboard.writeText(tsv); flash('Copied — paste into the matrix sheet'); }
     catch { flash('Copy blocked by browser'); }
-  }, [entries, flash]);
+  }, [entries, flash, admixtures]);
 
   /* ---- ⌘K ---- */
   useEffectApp(() => {
@@ -153,8 +159,6 @@ function App() {
           </div>
         </div>
 
-        <window.AlfredOrb onOpen={() => setPaletteOpen(true)} hint={`${entries.length} records · ⌘K`} />
-
         <button className="crew-chip" onClick={() => setView('leaderboard')} title="View leaderboard">
           <window.Avatar name={currentUser.name} size={32} manager={currentUser.role === 'manager'} />
           <div className="chip-info">
@@ -166,9 +170,8 @@ function App() {
 
         <div className="rail-nav">
           <RailBtn active={view === 'mix' || view === 'entry'} icon="✦" label="New record" onClick={gotoMix} />
-          <RailBtn active={view === 'records'} icon="▤" label="Records" badge={entries.length} onClick={() => setView('records')} />
+          <RailBtn active={view === 'records'} icon="▤" label="Dashboard" badge={entries.length} onClick={() => setView('records')} />
           <RailBtn active={view === 'leaderboard'} icon="★" label="Leaderboard" onClick={() => setView('leaderboard')} />
-          <RailBtn active={false} icon="◍" label="Mission Control" onClick={() => setChatOpen(true)} />
         </div>
 
         <div className="rail-data">
@@ -193,7 +196,8 @@ function App() {
           <window.MixSelect mixes={mixes} counts={counts} onPick={startEntry} onAddMix={addMix} />
         )}
         {view === 'entry' && current && (
-          <window.EntryForm entry={current} mix={activeMix} onSave={saveEntry} onCancel={gotoMix} onChangeMix={gotoMix} />
+          <window.EntryForm entry={current} mix={activeMix} onSave={saveEntry} onCancel={gotoMix} onChangeMix={gotoMix}
+            admixtures={admixtures} onAdmixtures={saveAdmixtures} />
         )}
         {view === 'records' && (
           <RecordsView entries={entries} mixes={mixes} onNew={gotoMix} onEdit={editEntry}
@@ -240,7 +244,7 @@ function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy
         <header className="rec-head fadeUp">
           <div>
             <div className="ms-eyebrow mono">◇ SESSION LOG</div>
-            <h1 className="ms-h1 disp">Records</h1>
+            <h1 className="ms-h1 disp">Dashboard</h1>
           </div>
           <div className="rec-actions">
             <button className="btn-ghost" onClick={onCopy} disabled={!entries.length}>⎘ Copy for sheet</button>
@@ -357,8 +361,8 @@ function AppStyles() {
       border-radius:14px 0 0 14px;box-shadow:-14px 0 40px -24px #000;transition:padding .2s,box-shadow .2s;}
     .chat-tab:hover{padding-right:13px;box-shadow:-14px 0 44px -18px var(--glow-cyan);}
     .chat-tab-orb{width:16px;height:16px;border-radius:50%;
-      background:radial-gradient(circle at 35% 30%,#fff,var(--cyan) 45%,var(--violet));
-      box-shadow:0 0 14px -2px var(--glow-cyan);animation:pulseGlow 3s infinite;}
+      background:radial-gradient(circle at 35% 30%,#eafff5,var(--green) 45%,var(--blue));
+      box-shadow:0 0 14px -2px oklch(.8 .15 155/.45);animation:pulseGlow 3s infinite;}
     .chat-tab-lab{writing-mode:vertical-rl;font-family:var(--font-d);font-size:11px;letter-spacing:.18em;color:var(--ink-dim);}
     /* toast */
     .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:95;
