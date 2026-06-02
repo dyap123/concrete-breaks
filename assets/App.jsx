@@ -26,6 +26,8 @@ function App() {
   const [paletteOpen, setPaletteOpen] = useStateApp(false);
   const [toast, setToast] = useStateApp(null);
   const [admixtures, setAdmixtures] = useStateApp(window.DEFAULT_ADMIXTURES);
+  const [railOpen, setRailOpen] = useStateApp(() => localStorage.getItem('orbital_rail') !== '0');
+  const toggleRail = useCbApp(() => setRailOpen((o) => { localStorage.setItem('orbital_rail', o ? '0' : '1'); return !o; }), []);
   const [lite, setLite] = useStateApp(() => document.documentElement.classList.contains('perf-lite'));
   const toggleLite = useCbApp(() => {
     const next = !document.documentElement.classList.contains('perf-lite');
@@ -188,13 +190,14 @@ function App() {
   return (
     <div className="shell">
       {/* ---------- LEFT RAIL ---------- */}
-      <nav className="rail glass">
+      <nav className={'rail glass' + (railOpen ? '' : ' collapsed')}>
         <div className="rail-brand">
           <span className="brand-mark"><span></span></span>
           <div>
             <div className="brand-name disp">OPENBREAK</div>
             <div className="brand-sub mono">break logger</div>
           </div>
+          <button className="rail-collapse" onClick={toggleRail} title="Hide sidebar">‹</button>
         </div>
 
         <button className="crew-chip" onClick={() => setView('leaderboard')} title="View leaderboard">
@@ -254,6 +257,14 @@ function App() {
             isManager={currentUser.role === 'manager'} onAddMember={addMember} onRemoveMember={removeMember} />
         )}
       </main>
+
+      {/* ---------- RAIL REOPEN TAB ---------- */}
+      {!railOpen && (
+        <button className="rail-tab" onClick={toggleRail} title="Open sidebar">
+          <span className="rail-tab-ic">☰</span>
+          <span className="rail-tab-lab">MENU</span>
+        </button>
+      )}
 
       {/* ---------- CHAT TAB ---------- */}
       {!chatOpen && (
@@ -607,8 +618,21 @@ function AppStyles() {
     .shell{display:flex;height:100%;gap:0;}
     /* rail */
     .rail{width:268px;flex:none;height:100%;display:flex;flex-direction:column;gap:14px;
-      padding:18px 16px;border-right:1px solid var(--line);border-top:none;border-bottom:none;border-left:none;}
+      padding:18px 16px;border-right:1px solid var(--line);border-top:none;border-bottom:none;border-left:none;
+      transition:margin-left .35s var(--ease);}
+    .rail.collapsed{margin-left:-268px;}
     .rail-brand{display:flex;align-items:center;gap:11px;padding:2px 4px 4px;}
+    .rail-collapse{margin-left:auto;width:26px;height:26px;border-radius:8px;flex:none;
+      background:rgba(8,12,28,.5);border:1px solid var(--line);color:var(--ink-dim);font-size:18px;line-height:1;}
+    .rail-collapse:hover{color:var(--ink);border-color:var(--cyan);}
+    /* reopen tab — mirror of the Alfred chat tab, on the left edge */
+    .rail-tab{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:60;
+      display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 9px;
+      background:var(--panel);border:1px solid var(--line-strong);border-left:none;
+      border-radius:0 14px 14px 0;box-shadow:14px 0 40px -24px #000;transition:padding .2s;}
+    .rail-tab:hover{padding-left:13px;border-color:var(--cyan);}
+    .rail-tab-ic{font-size:16px;color:var(--cyan);}
+    .rail-tab-lab{writing-mode:vertical-rl;font-family:var(--font-d);font-size:11px;letter-spacing:.18em;color:var(--ink-dim);}
     .brand-mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;
       background:radial-gradient(circle at 30% 25%,var(--cyan),var(--violet) 70%,var(--magenta));
       box-shadow:0 0 22px -4px var(--glow-cyan);}

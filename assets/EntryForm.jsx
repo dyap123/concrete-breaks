@@ -62,6 +62,7 @@ function DateField({ value, onChange, compact }) {
             <div className="df-foot">
               <button type="button" className="df-act" onClick={() => { onChange(todayISO); setOpen(false); }}>Today</button>
               {sel && <button type="button" className="df-act clear" onClick={() => { onChange(''); setOpen(false); }}>Clear</button>}
+              <button type="button" className="df-act" onClick={() => setOpen(false)}>Close</button>
             </div>
           </div>
         </>
