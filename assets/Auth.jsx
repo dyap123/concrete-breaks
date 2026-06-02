@@ -26,13 +26,18 @@ function Avatar({ name, size = 38, manager }) {
   );
 }
 
+const MANAGER_PIN = '050103';
 function AuthGate({ users, onSignIn, onAddUser }) {
   const [adding, setAdding] = useStateAu(false);
   const [name, setName] = useStateAu('');
+  const [pinOpen, setPinOpen] = useStateAu(false);
+  const [pin, setPin] = useStateAu('');
+  const [pinErr, setPinErr] = useStateAu(false);
 
   const manager = users.find((u) => u.role === 'manager');
   const interns = users.filter((u) => u.role === 'intern')
     .sort((a, b) => b.points - a.points);
+  const tryMgr = () => { if (pin === MANAGER_PIN) { setPinOpen(false); setPin(''); onSignIn(manager.id); } else { setPinErr(true); setPin(''); } };
 
   const submit = () => {
     const n = name.trim();
@@ -55,13 +60,22 @@ function AuthGate({ users, onSignIn, onAddUser }) {
         <p className="auth-lead">Sign in so every break record you log earns you a point on the crew leaderboard.</p>
 
         {manager && (
-          <div className="auth-mgr" onClick={() => onSignIn(manager.id)}>
+          <div className={'auth-mgr' + (pinErr ? ' err' : '')}>
             <Avatar name={manager.name} size={46} manager />
             <div className="mgr-info">
               <div className="mgr-name disp">{manager.name}</div>
-              <div className="mgr-role mono">◆ MISSION MANAGER</div>
+              <div className="mgr-role mono">◆ MISSION MANAGER · {pinErr ? 'WRONG PIN' : 'PIN required'}</div>
             </div>
-            <span className="mgr-go mono">enter →</span>
+            {!pinOpen ? (
+              <button className="mgr-go mono" onClick={() => { setPinOpen(true); setPinErr(false); }}>enter →</button>
+            ) : (
+              <div className="mgr-pin">
+                <input className="mgr-pin-in mono" type="password" inputMode="numeric" autoFocus placeholder="PIN" value={pin}
+                  onChange={(e) => { setPin(e.target.value); setPinErr(false); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') tryMgr(); if (e.key === 'Escape') { setPinOpen(false); setPin(''); } }} />
+                <button className="mgr-pin-go" onClick={tryMgr}>→</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -123,7 +137,18 @@ function AuthGate({ users, onSignIn, onAddUser }) {
         .mgr-info{flex:1;}
         .mgr-name{font-size:17px;color:var(--ink);}
         .mgr-role{font-size:10px;color:var(--amber);letter-spacing:.12em;margin-top:3px;}
-        .mgr-go{font-size:12px;color:var(--ink-dim);}
+        .mgr-go{font-size:12px;color:var(--ink-dim);background:rgba(8,12,28,.4);border:1px solid var(--line);
+          border-radius:99px;padding:8px 14px;transition:.15s;}
+        .mgr-go:hover{color:var(--ink);border-color:oklch(.8 .14 60/.6);}
+        .mgr-pin{display:flex;gap:7px;align-items:center;}
+        .mgr-pin-in{width:84px;background:rgba(8,12,28,.6);border:1px solid oklch(.8 .14 60/.4);border-radius:9px;
+          padding:9px 11px;color:var(--ink);font-size:14px;letter-spacing:.28em;outline:none;text-align:center;}
+        .mgr-pin-in:focus{border-color:var(--amber);}
+        .mgr-pin-go{width:34px;height:34px;border-radius:9px;border:none;color:#06122a;font-size:15px;
+          background:linear-gradient(135deg,var(--amber),oklch(.78 .16 50));}
+        .auth-mgr.err{border-color:var(--red)!important;animation:mgrShake .35s;}
+        .auth-mgr.err .mgr-role{color:var(--red);}
+        @keyframes mgrShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
         .auth-sub{font-size:10px;letter-spacing:.16em;color:var(--ink-faint);margin-bottom:13px;}
         .auth-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
         .crew-card{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:var(--r-md);

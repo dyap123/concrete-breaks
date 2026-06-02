@@ -93,6 +93,7 @@ function App() {
     setActiveMix(mixes.find((m) => m.code === e.mix) || null); setCurrent(e); setView('entry');
   }, [mixes]);
   const deleteEntry = useCbApp((id) => fb.remove('entries/' + id), []);
+  const patchEntry = useCbApp((id, patch) => fb.update('entries/' + id, patch), []); // grid inline edits
 
   /* ---- crew / auth ---- */
   const signIn = useCbApp((id) => { setCurrentId(id); setView('mix'); }, []);
@@ -230,7 +231,7 @@ function App() {
         )}
         {view === 'records' && (
           <RecordsView entries={entries} mixes={mixes} onNew={gotoMix} onEdit={editEntry}
-            onDelete={deleteEntry} onExport={exportCSV} onCopy={copyTSV} />
+            onDelete={deleteEntry} onExport={exportCSV} onCopy={copyTSV} onPatch={patchEntry} />
         )}
         {view === 'mixes' && (
           <MixManager mixes={mixes} counts={counts} onSave={saveMix} onDelete={deleteMix} onAdd={addMix} />
@@ -345,8 +346,63 @@ function DashCharts({ entries, mixes }) {
   );
 }
 
+/* ---- editable grid (mass edit) ---- */
+function EntryGridRow({ entry, codes, onPatch, onDelete, onEdit }) {
+  const [d, setD] = React.useState(entry);
+  React.useEffect(() => setD(entry), [entry.id]);
+  const set = (k, v) => setD((x) => ({ ...x, [k]: v }));
+  const setNow = (k, v) => { setD((x) => ({ ...x, [k]: v })); onPatch(entry.id, { [k]: v }); };
+  const NUMK = { fc: 1, age: 1 };
+  const blur = (k) => { let v = d[k]; if (NUMK[k]) v = k === 'age' ? (parseInt(v) || '') : window.num(v); if (JSON.stringify(v) !== JSON.stringify(entry[k])) onPatch(entry.id, { [k]: v }); };
+  const cyl = (a) => Array.isArray(d['d' + a]) ? d['d' + a] : ['', '', ''];
+  const setCyl = (a, i, v) => { const arr = cyl(a).slice(); arr[i] = v; set('d' + a, arr); };
+  const blurCyl = (a) => { if (JSON.stringify(cyl(a)) !== JSON.stringify(entry['d' + a])) onPatch(entry.id, { ['d' + a]: cyl(a) }); };
+  const opt = (list) => [<option key="_" value=""></option>, ...list.map((o) => <option key={o} value={o}>{o}</option>)];
+  return (
+    <tr>
+      <td className="eg-sticky"><select className="eg-in mono" value={d.mix || ''} onChange={(e) => setNow('mix', e.target.value)}>{codes.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>
+      <td><input className="eg-in" value={d.pourNumber || ''} onChange={(e) => set('pourNumber', e.target.value)} onBlur={() => blur('pourNumber')} /></td>
+      <td><input className="eg-in mono" type="date" value={d.pourDate || ''} onChange={(e) => setNow('pourDate', e.target.value)} /></td>
+      <td><select className="eg-in" value={d.area || ''} onChange={(e) => setNow('area', e.target.value)}>{opt(window.AREAS)}</select></td>
+      <td><select className="eg-in" value={d.sequence || ''} onChange={(e) => setNow('sequence', e.target.value)}>{opt(window.SEQUENCES)}</select></td>
+      <td><select className="eg-in" value={d.element || ''} onChange={(e) => setNow('element', e.target.value)}>{opt(window.ELEMENTS)}</select></td>
+      <td><input className="eg-in mono eg-num" type="number" value={d.fc ?? ''} onChange={(e) => set('fc', e.target.value)} onBlur={() => blur('fc')} /></td>
+      <td><input className="eg-in mono eg-num eg-sm" type="number" value={d.age ?? ''} onChange={(e) => set('age', e.target.value)} onBlur={() => blur('age')} /></td>
+      {window.BREAK_AGES.map((a) => [0, 1, 2].map((i) => (
+        <td key={a + '_' + i} className={i === 0 ? 'eg-agecell' : ''}><input className="eg-in mono eg-num eg-cyl" type="number" value={cyl(a)[i] ?? ''} onChange={(e) => setCyl(a, i, e.target.value)} onBlur={() => blurCyl(a)} placeholder="—" /></td>
+      )))}
+      <td className="eg-act"><button className="eg-open" title="open full form" onClick={() => onEdit(entry)}>⤢</button><button className="eg-del" title="delete record" onClick={() => { if (confirm('Delete this record?')) onDelete(entry.id); }}>×</button></td>
+    </tr>
+  );
+}
+function EntryGrid({ entries, mixes, onPatch, onDelete, onEdit }) {
+  const rows = [...entries].reverse();
+  const codes = mixes.map((m) => m.code);
+  return (
+    <div className="egrid-wrap fadeUp">
+      <div className="egrid-hint mono">Inline edit — cells save on blur · {rows.length} record{rows.length === 1 ? '' : 's'}. Cylinders shown for standard ages; ⤢ opens the full form for custom breaks.</div>
+      <div className="egrid-scroll">
+        <table className="egrid">
+          <thead>
+            <tr>
+              <th className="eg-sticky">Mix</th><th>Pour #</th><th>Pour date</th><th>Area</th><th>Seq</th><th>Element</th><th>f'c</th><th>Age</th>
+              {window.BREAK_AGES.map((a) => <th key={a} colSpan={3} className="eg-agehead">{a}-day cylinders</th>)}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((e) => <EntryGridRow key={e.id} entry={e} codes={codes} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} />)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ---- records view ---- */
-function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy }) {
+function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy, onPatch }) {
+  const [grid, setGrid] = React.useState(() => localStorage.getItem('orbital_grid') === '1');
+  const toggleGrid = () => setGrid((g) => { localStorage.setItem('orbital_grid', g ? '0' : '1'); return !g; });
   return (
     <div className="rec scrollY">
       <div className="rec-inner">
@@ -356,6 +412,7 @@ function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy
             <h1 className="ms-h1 disp">Dashboard</h1>
           </div>
           <div className="rec-actions">
+            <button className={'btn-ghost grid-tog' + (grid ? ' on' : '')} onClick={toggleGrid} title="Toggle editable grid">{grid ? '▤ Cards' : '▦ Grid'}</button>
             <button className="btn-ghost" onClick={onCopy} disabled={!entries.length}>⎘ Copy for sheet</button>
             <button className="btn-ghost" onClick={onExport} disabled={!entries.length}>⭳ CSV</button>
             <button className="btn-primary" onClick={onNew}><span>✦ New record</span></button>
@@ -364,7 +421,9 @@ function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy
 
         <DashCharts entries={entries} mixes={mixes} />
 
-        {!entries.length ? (
+        {grid && entries.length ? (
+          <EntryGrid entries={entries} mixes={mixes} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} />
+        ) : !entries.length ? (
           <div className="rec-empty glass fadeUp">
             <div className="rec-empty-orb"></div>
             <div className="rec-empty-title disp">No records yet</div>
@@ -625,6 +684,37 @@ function AppStyles() {
     .cmp-chip.on .cmp-dot{opacity:1;box-shadow:0 0 8px var(--c);}
     .cmp-chip.nodata{opacity:.5;}
     .cmp-chip.nodata.on{opacity:.8;}
+    .grid-tog.on{color:var(--cyan);border-color:var(--cyan);background:oklch(.8 .13 205/.1);}
+    /* editable grid */
+    .egrid-wrap{margin-bottom:20px;}
+    .egrid-hint{font-size:10.5px;color:var(--ink-faint);margin-bottom:10px;letter-spacing:.02em;}
+    .egrid-scroll{overflow-x:auto;border:1px solid var(--line-strong);border-radius:var(--r-md);
+      background:rgba(13,19,44,.4);}
+    .egrid{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content;min-width:100%;}
+    .egrid th{position:sticky;top:0;z-index:2;background:#0d1430;color:var(--ink-faint);font-family:var(--font-m);
+      font-size:9.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-align:left;
+      padding:9px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+    .egrid th.eg-agehead{text-align:center;color:var(--cyan);border-left:1px solid var(--line-strong);}
+    .egrid td{padding:3px 5px;border-bottom:1px solid rgba(120,140,230,.08);vertical-align:middle;}
+    .egrid td.eg-agecell{border-left:1px solid rgba(120,140,230,.14);}
+    .egrid tbody tr:nth-child(even){background:rgba(255,255,255,.012);}
+    .egrid tbody tr:hover{background:oklch(.8 .13 205/.04);}
+    .eg-sticky{position:sticky;left:0;z-index:1;background:#0d1430;border-right:1px solid var(--line-strong);}
+    .egrid tbody tr:hover .eg-sticky{background:#121a38;}
+    .eg-in{background:rgba(8,12,28,.5);border:1px solid transparent;border-radius:6px;padding:6px 7px;
+      color:var(--ink);font-size:12px;outline:none;width:120px;transition:.12s;}
+    .eg-in:hover{border-color:var(--line);}
+    .eg-in:focus{border-color:var(--cyan);background:rgba(8,12,28,.85);box-shadow:0 0 0 2px oklch(.8 .13 205/.14);}
+    select.eg-in{appearance:none;cursor:pointer;width:90px;padding-right:7px;}
+    select.eg-in option{background:#0e1533;}
+    .eg-num{width:74px;text-align:right;}
+    .eg-sm{width:54px;}
+    .eg-cyl{width:62px;}
+    .eg-act{display:flex;gap:4px;padding-left:8px;}
+    .eg-open,.eg-del{width:26px;height:26px;border-radius:6px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+      color:var(--ink-faint);font-size:13px;}
+    .eg-open:hover{color:var(--cyan);border-color:var(--cyan);}
+    .eg-del:hover{color:var(--red);border-color:var(--red);}
     .rec-list{display:flex;flex-direction:column;gap:12px;}
     .rec-card{position:relative;display:grid;
       grid-template-columns:160px 1fr auto auto;gap:18px;align-items:center;
