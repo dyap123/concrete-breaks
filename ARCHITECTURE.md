@@ -106,6 +106,37 @@ The mini-game layers three more classic ideas on top of the render-loop fix abov
 chat still renders and tells you why. Charts fall back to flat colors if `chartArea` isn't
 ready. The app never hard-crashes from a missing optional piece.
 
+### 2h. Overlays, stacking contexts, and the iPad calendar bug
+The date picker worked on desktop but on iPad you'd tap a day and nothing happened — the popover
+was "stuck." The cause is one of the most-misunderstood corners of CSS: the **stacking context**.
+
+`z-index` is **not global**. An element's `z-index` only ranks it *among its siblings inside the
+same stacking context*. Lots of innocent CSS silently creates a new context — `transform`,
+`opacity < 1`, `filter`, `position:fixed`, an `animation`. Our entry-form cards animate in with a
+`transform` (`fadeUp`), so each card is its own little world. The calendar popover lived *inside*
+that world as `position:absolute; z-index:61` — but the full-screen dismiss backdrop was
+`position:fixed; z-index:60`, which escaped to the **root** context. Result: a "lower" z-index
+element (the backdrop) rendered **on top of** a "higher" one (the popover), because they were being
+compared in different contexts. Taps hit the backdrop, not the day. (Desktop hid it by luck of
+paint order; iPad's compositor exposed it.)
+
+The fix is the general rule for any overlay — **menus, tooltips, modals, toasts**:
+
+> An overlay must escape its parent's stacking context. Render it at the document root (a React
+> **portal**) or make it `position:fixed` at a top-level `z-index`, never nested inside a
+> transformed/animated card.
+
+We took the simplest version: the popover became a **centered `position:fixed` modal** at
+`z-index:9999`, anchored to the viewport instead of the button. It now paints above everything,
+and taps land. This is also why production UI kits put every dropdown/modal in a portal by default.
+
+### 2i. Slide panels = transform, not layout
+The Alfred chat and the collapsible left rail both **slide** rather than appear/disappear. They're
+moved with `transform: translateX()` (and the rail with a `margin-left` toggle), which the GPU
+**composites** — no relayout, no repaint of their contents. A panel is always in the DOM; "open"
+just changes one transform. Cheap, smooth, and the closed panel costs nothing to keep mounted. The
+edge "tab" that reopens it is the same pattern mirrored left/right — one component idea, two sides.
+
 ---
 
 ## 3. Backend principles (the data layer)
