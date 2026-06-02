@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script>
+  /* Lite mode (no-GPU laptops): strips blur/backdrop-filter/loops. Applied to
+     <html> before first paint to avoid a heavy flash. Auto-on for reduced-motion. */
+  try {
+    var pref = localStorage.getItem('orbital_lite');
+    if (pref === '1' || (pref == null && matchMedia('(prefers-reduced-motion:reduce)').matches)) document.documentElement.classList.add('perf-lite');
+  } catch (e) {}
+</script>
 <style>
 :root{
   --space-950:#060a18;
@@ -109,6 +117,21 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important;animation-iteration-count:1!important;}
 }
+/* ── Lite mode — for laptops without a GPU ──
+   Kills the three big GPU costs: large blur filters, backdrop-filter glass
+   (recomputed on scroll), and continuous animation loops. */
+.perf-lite *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+.perf-lite .nebula{display:none!important;}
+.perf-lite #stars{opacity:.45;}
+.perf-lite .glass{background:rgba(15,21,46,.95)!important;}
+.perf-lite .node-orb{filter:none!important;}
+.perf-lite .node-svg,.perf-lite .node-dot,.perf-lite .node-flow line,
+.perf-lite .chat-tab-orb,.perf-lite .rec-empty-orb,.perf-lite .chat-orb,
+.perf-lite .ro-status.na .ro-status-dot,.perf-lite .bubble.assistant::before,
+.perf-lite .brand-mark,.perf-lite .pod-slot.p1{animation:none!important;}
+/* trim the most expensive glows (soft, large-radius shadows) */
+.perf-lite .dash-chart,.perf-lite .rep-fmt.on,.perf-lite .lb-chart,
+.perf-lite .df-pop,.perf-lite .toast{box-shadow:none!important;}
 </style>
 </head>
 <body>
@@ -171,10 +194,19 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
     }
     raf=requestAnimationFrame(frame);
   }
-  addEventListener('resize',resize);resize();
-  if(reduce){ // draw once
+  function drawStatic(){
+    ctx.clearRect(0,0,w,h);
     for(const s of stars){ctx.beginPath();ctx.fillStyle=`rgba(225,232,255,${s.a})`;ctx.arc(s.x,s.y,s.r,0,6.283);ctx.fill();}
-  } else frame();
+  }
+  let lite = reduce || document.documentElement.classList.contains('perf-lite');
+  // Toggleable at runtime — stops the rAF loop entirely on lite (no per-frame repaint).
+  window.starfieldSetLite=function(on){
+    lite=on;
+    if(on){ if(raf){cancelAnimationFrame(raf);raf=null;} drawStatic(); }
+    else if(!raf){ frame(); }
+  };
+  addEventListener('resize',function(){resize(); if(lite) drawStatic();});resize();
+  if(lite) drawStatic(); else frame();
 })();
 </script>
 
@@ -224,7 +256,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   // Celebration burst on logging a record — confirms the log + dopamine hit.
   const CELEB=['oklch(.82 .15 200)','oklch(.74 .2 330)','oklch(.74 .17 285)','oklch(.8 .16 150)','oklch(.84 .15 75)'];
   window.celebrate=function(o){
-    o=o||{}; const count=o.count||26, rings=o.rings==null?2:o.rings;
+    o=o||{}; const lite=document.documentElement.classList.contains('perf-lite');
+    const count=lite?12:(o.count||26), rings=lite?0:(o.rings==null?2:o.rings);
     const cx=innerWidth/2, cy=innerHeight*0.4;
     for(let i=0;i<count;i++){
       const sp=document.createElement('span'); sp.className='celeb-spark'+(Math.random()<.35?' sq':'');

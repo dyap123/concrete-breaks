@@ -23,8 +23,9 @@ if (window.Chart) {
       const type = args.meta.type;
       let col = ds.borderColor;
       if (typeof col !== 'string') col = type === 'bar' ? 'rgba(150,190,255,.5)' : 'rgba(120,170,255,.5)';
+      const lite = document.documentElement.classList.contains('perf-lite');
       const ctx = chart.ctx; ctx.save();
-      ctx.shadowColor = col; ctx.shadowBlur = type === 'line' ? 16 : 13; ctx.shadowOffsetY = type === 'bar' ? 2 : 0;
+      ctx.shadowColor = col; ctx.shadowBlur = lite ? 0 : (type === 'line' ? 16 : 13); ctx.shadowOffsetY = type === 'bar' ? 2 : 0;
     },
     afterDatasetDraw(chart) { chart.ctx.restore(); },
   });

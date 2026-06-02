@@ -26,6 +26,14 @@ function App() {
   const [paletteOpen, setPaletteOpen] = useStateApp(false);
   const [toast, setToast] = useStateApp(null);
   const [admixtures, setAdmixtures] = useStateApp(window.DEFAULT_ADMIXTURES);
+  const [lite, setLite] = useStateApp(() => document.documentElement.classList.contains('perf-lite'));
+  const toggleLite = useCbApp(() => {
+    const next = !document.documentElement.classList.contains('perf-lite');
+    document.documentElement.classList.toggle('perf-lite', next);
+    localStorage.setItem('orbital_lite', next ? '1' : '0');
+    if (window.starfieldSetLite) window.starfieldSetLite(next);
+    setLite(next);
+  }, []);
 
   // all mixes live in Firebase (seeded from the built-ins) so they're editable + shared
   const mixes = useMemoApp(() => customMixes.length ? customMixes : window.MIX_DESIGNS, [customMixes]);
@@ -217,7 +225,7 @@ function App() {
         <div className="rail-foot mono">
           <button className="signout" onClick={signOut} title="Sign out">⏻ sign out</button>
           <span className="foot-spacer"></span>
-          <span className="foot-dot"></span> ready
+          <button className={'lite-tog' + (lite ? ' on' : '')} onClick={toggleLite} title="Lite mode — for laptops without a GPU">{lite ? '◐ lite' : '○ lite'}</button>
         </div>
       </nav>
 
@@ -628,6 +636,10 @@ function AppStyles() {
       padding:2px;letter-spacing:.04em;transition:.15s;}
     .signout:hover{color:var(--red);}
     .foot-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+    .lite-tog{font-family:var(--font-m);font-size:9px;color:var(--ink-faint);letter-spacing:.06em;
+      border:1px solid var(--line);border-radius:99px;padding:3px 9px;transition:.15s;}
+    .lite-tog:hover{color:var(--ink-dim);border-color:var(--line-strong);}
+    .lite-tog.on{color:var(--green);border-color:oklch(.8 .15 155/.4);background:oklch(.8 .15 155/.08);}
     /* workspace */
     .work{flex:1;min-width:0;height:100%;position:relative;}
     /* chat tab */
