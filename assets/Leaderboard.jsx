@@ -13,6 +13,7 @@ function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember,
   const podium = interns.slice(0, 3);
   const rest = interns.slice(3);
   const order = [1, 0, 2]; // visual L-M-R so #1 sits centre
+  const arcade = users.filter((u) => (u.dinoHi || 0) > 0).sort((a, b) => (b.dinoHi || 0) - (a.dinoHi || 0)).slice(0, 6);
 
   // points-per-crew bar chart
   const chartData = {
@@ -111,6 +112,22 @@ function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember,
               </div>
             )}
           </>
+        )}
+
+        {arcade.length > 0 && (
+          <div className="lb-arcade glass fadeUp">
+            <div className="lb-arcade-head"><span className="ms-eyebrow mono" style={{ margin: 0 }}>◇ BREAK RUNNER · HIGH SCORES</span><span className="lb-arcade-sub mono">⛶ fullscreen in the rail</span></div>
+            <div className="lb-arcade-list">
+              {arcade.map((u, i) => (
+                <div className={'lb-arc-row' + (u.id === currentId ? ' me' : '')} key={u.id}>
+                  <span className="lb-arc-rank mono">{['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</span>
+                  <Avatar name={u.name} size={26} />
+                  <span className="lb-arc-name">{u.name}</span>
+                  <span className="lb-arc-score mono">{u.dinoHi}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {isManager && (
@@ -216,6 +233,17 @@ function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember,
           color:var(--ink-faint);font-size:14px;}
         .lb-manage-x:hover{color:var(--red);border-color:var(--red);}
         .lb-manage-empty{font-size:12px;color:var(--ink-faint);padding:10px 2px;}
+        /* break runner high scores */
+        .lb-arcade{border-radius:var(--r-lg);padding:18px 20px;margin-top:24px;border-color:var(--line-strong);}
+        .lb-arcade-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;}
+        .lb-arcade-sub{font-size:9.5px;color:var(--ink-faint);}
+        .lb-arcade-list{display:flex;flex-direction:column;gap:6px;}
+        .lb-arc-row{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:10px;
+          background:rgba(8,12,28,.4);border:1px solid var(--line);}
+        .lb-arc-row.me{border-color:var(--cyan);background:oklch(.8 .13 205/.06);}
+        .lb-arc-rank{width:26px;text-align:center;font-size:13px;}
+        .lb-arc-name{flex:1;font-size:13px;color:var(--ink);}
+        .lb-arc-score{font-size:15px;color:var(--cyan);font-family:var(--font-m);}
         @media (max-width:720px){.lb-row-logged{display:none;}}
       `}</style>
     </div>

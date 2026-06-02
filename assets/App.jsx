@@ -102,6 +102,7 @@ function App() {
   }, [mixes]);
   const deleteEntry = useCbApp((id) => fb.remove('entries/' + id), []);
   const patchEntry = useCbApp((id, patch) => fb.update('entries/' + id, patch), []); // grid inline edits
+  const saveDinoHi = useCbApp((s) => { if (currentId) fb.max('users/' + currentId + '/dinoHi', s); }, [currentId]); // Break Runner hi-score
 
   /* ---- crew / auth ---- */
   const signIn = useCbApp((id) => { setCurrentId(id); setView('mix'); }, []);
@@ -220,7 +221,7 @@ function App() {
 
         <div className="rail-spacer"></div>
 
-        <window.DinoGame compact />
+        <window.DinoGame compact user={currentUser} onHi={saveDinoHi} />
 
         <div className="rail-foot mono">
           <button className="signout" onClick={signOut} title="Sign out">⏻ sign out</button>

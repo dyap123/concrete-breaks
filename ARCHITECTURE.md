@@ -82,6 +82,25 @@ ideas:
 - Drop per-frame `shadowBlur` (expensive). The celebration uses **transform-only CSS
   animations** (GPU-composited) and auto-cleans its DOM nodes — cheap by design.
 
+### 2f-bis. The game loop, fullscreen, and shared hi-scores (Break Runner)
+The mini-game layers three more classic ideas on top of the render-loop fix above:
+
+- **Difficulty curve.** Speed isn't constant — it ramps with the score
+  (`speed = 4.6 + min(score·0.02, 9)`) and obstacles spawn more often as you survive. The cap
+  keeps it humanly playable: an *unbounded* ramp eventually becomes a reflex test no one can win,
+  so good difficulty curves rise **then plateau**.
+- **Fullscreen via the platform API.** `element.requestFullscreen()` hands one DOM node to the OS
+  compositor. The game logic never changes — only the canvas is **CSS-scaled** to fill the screen
+  (`image-rendering: pixelated` keeps the retro look crisp). Separating *simulation* (fixed 300-px
+  coordinate space) from *presentation* (scaled pixels) is why one code path serves both the tiny
+  rail widget and a full monitor.
+- **Hi-scores as shared state, with the right merge rule.** A personal best is written to
+  `users/{id}/dinoHi` — but the operation isn't "set", it's **`max(current, new)`** in a Firebase
+  transaction. Concurrent/racing writes can only ever *raise* the record, never lower it. Choosing
+  the correct **conflict-resolution / merge function** (max for hi-scores, +1 for points, last-write
+  for a text field) is the heart of correctness in a shared-state system. The leaderboard then just
+  *reads and sorts* that field — the same data, a second view.
+
 ### 2g. Progressive enhancement & graceful degradation
 `prefers-reduced-motion` disables the starfield/particles. If the LLM key is missing, the
 chat still renders and tells you why. Charts fall back to flat colors if `chartArea` isn't

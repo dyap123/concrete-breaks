@@ -231,6 +231,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
     remove:(p)=>db.ref(NS+'/'+p).remove(),
     get:(p)=>db.ref(NS+'/'+p).once('value').then(s=>s.val()),
     inc:(p,by)=>db.ref(NS+'/'+p).transaction(v=>(v||0)+by), // atomic point increments
+    max:(p,v)=>db.ref(NS+'/'+p).transaction(c=>Math.max(c||0,v)), // keep the highest (hi-scores)
     rootGet:(p)=>db.ref(p).once('value').then(s=>s.val()),
     rootSet:(p,d)=>db.ref(p).set(d)
   };

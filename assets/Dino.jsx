@@ -5,13 +5,29 @@
 ==================================================================== */
 const { useRef, useEffect, useState, useCallback } = React;
 
-function DinoGame({ compact }) {
+function DinoGame({ compact, user, onHi }) {
   const canvasRef = useRef(null);
+  const stageRef = useRef(null);
   const stateRef = useRef(null);
   const [running, setRunning] = useState(false);
   const [over, setOver] = useState(false);
   const [score, setScore] = useState(0);
   const [hi, setHi] = useState(() => +(localStorage.getItem('dino_hi') || 0));
+  const [fs, setFs] = useState(false);
+  // keep latest callback/user without restarting the game loop
+  const onHiRef = useRef(onHi); onHiRef.current = onHi;
+  const userRef = useRef(user); userRef.current = user;
+
+  // reflect this crew member's shared best from Firebase
+  useEffect(() => { if (user && (user.dinoHi || 0) > hi) setHi(user.dinoHi); }, [user && user.dinoHi]);
+
+  // fullscreen state + Esc/native changes
+  useEffect(() => { const h = () => setFs(!!(document.fullscreenElement || document.webkitFullscreenElement)); document.addEventListener('fullscreenchange', h); document.addEventListener('webkitfullscreenchange', h); return () => { document.removeEventListener('fullscreenchange', h); document.removeEventListener('webkitfullscreenchange', h); }; }, []);
+  const toggleFs = useCallback(() => {
+    const el = stageRef.current; if (!el) return;
+    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+    else { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
+  }, []);
 
   const W = 300, H = compact ? 116 : 150, GROUND = H - 22;
 
@@ -70,14 +86,15 @@ function DinoGame({ compact }) {
       s.dy += 0.62 * dt; s.y += s.dy * dt;
       if (s.y >= GROUND) { s.y = GROUND; s.dy = 0; s.jumping = false; }
 
-      // time-based spawn (works with fractional dt)
+      // time-based spawn — gets more frequent as the score climbs
       s.spawnT = (s.spawnT || 0) - dt;
       if (s.spawnT <= 0) {
         const tall = Math.random() < .35;
         s.obstacles.push({ x: W + 10, w: tall ? 12 : 16, h: tall ? 30 : 20 });
-        s.spawnT = Math.max(42, 74 - s.score * .04 + Math.random() * 18);
+        s.spawnT = Math.max(34, 96 - s.score * .10 + Math.random() * 16);
       }
-      s.speed = 4.6 + s.score * 0.004;
+      // steeper ramp — clearly faster the longer you survive (capped so it stays playable)
+      s.speed = 4.6 + Math.min(s.score * 0.02, 9);
       s.obstacles.forEach((o) => { o.x -= s.speed * dt; });
       s.obstacles = s.obstacles.filter((o) => o.x + o.w > -4);
       s.score += 0.20 * dt;
@@ -128,6 +145,9 @@ function DinoGame({ compact }) {
         setRunning(false); setOver(true);
         const hs = Math.max(hi, si);
         setHi(hs); localStorage.setItem('dino_hi', hs);
+        // push a new personal best to the shared leaderboard
+        const u = userRef.current;
+        if (onHiRef.current && u && si > (u.dinoHi || 0)) onHiRef.current(si);
         return;
       }
       raf = requestAnimationFrame(loop);
@@ -153,8 +173,9 @@ function DinoGame({ compact }) {
       <div className="dino-head">
         <span className="dino-title">⊟ BREAK RUNNER</span>
         <span className="dino-score mono">{String(score).padStart(5, '0')} · HI {String(hi).padStart(5, '0')}</span>
+        <button className="dino-fs" onClick={toggleFs} title="Fullscreen">⛶</button>
       </div>
-      <div className="dino-stage">
+      <div className="dino-stage" ref={stageRef}>
         <canvas ref={canvasRef} width={W} height={H} style={{ width: '100%', height: H, display: 'block' }} />
         {(!running) && (
           <div className="dino-overlay">
@@ -168,9 +189,18 @@ function DinoGame({ compact }) {
       </div>
       <style>{`
         .dino{padding:11px 12px 12px;}
-        .dino-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+        .dino-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
         .dino-title{font-family:var(--font-d);font-size:11px;letter-spacing:.12em;color:var(--ink-dim);}
-        .dino-score{font-size:10px;color:var(--ink-faint);letter-spacing:.04em;}
+        .dino-score{font-size:10px;color:var(--ink-faint);letter-spacing:.04em;flex:1;text-align:right;}
+        .dino-fs{font-size:12px;color:var(--ink-faint);border:1px solid var(--line);border-radius:6px;
+          padding:1px 6px;line-height:1.2;transition:.12s;flex:none;}
+        .dino-fs:hover{color:var(--cyan);border-color:var(--cyan);}
+        .dino-stage:fullscreen,.dino-stage:-webkit-full-screen{display:flex;align-items:center;justify-content:center;
+          background:#070a16;border-radius:0;border:none;}
+        .dino-stage:fullscreen canvas,.dino-stage:-webkit-full-screen canvas{
+          width:auto!important;height:90vh!important;max-width:98vw;image-rendering:pixelated;}
+        .dino-stage:fullscreen .dino-overlay,.dino-stage:-webkit-full-screen .dino-overlay{backdrop-filter:none;}
+        .dino-stage:fullscreen .dino-msg,.dino-stage:-webkit-full-screen .dino-msg{font-size:28px;}
         .dino-stage{position:relative;border-radius:var(--r-sm);overflow:hidden;
           background:linear-gradient(180deg,rgba(8,12,30,.6),rgba(12,18,44,.3));
           border:1px solid var(--line);cursor:pointer;}
