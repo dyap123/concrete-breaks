@@ -6,6 +6,39 @@
 ==================================================================== */
 const { useState: useStateC, useRef: useRefC, useEffect: useEffectC } = React;
 
+/* Alfred's OpenYap node-brain mark — a little constellation of connected
+   nodes (not a generic glowing bubble). Reused by the chat header + tab. */
+function NodeOrb({ size = 30 }) {
+  const nodes = [
+    [20, 6, 'oklch(.85 .13 205)'], [8, 15, 'oklch(.72 .15 255)'], [32, 13, 'oklch(.74 .16 290)'],
+    [6, 30, 'oklch(.8 .15 155)'], [34, 29, 'oklch(.78 .17 330)'], [20, 35, 'oklch(.74 .15 255)'],
+    [20, 20, '#eaf3ff'],
+  ];
+  const edges = [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [0, 1], [0, 2], [3, 5], [4, 5]];
+  return (
+    <span className="node-orb" style={{ width: size, height: size, display: 'inline-block' }}>
+      <svg viewBox="0 0 40 40" width={size} height={size} className="node-svg">
+        <g stroke="oklch(.8 .12 220 / .45)" strokeWidth="0.8">
+          {edges.map(([a, b], i) => (
+            <line key={i} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]} />
+          ))}
+        </g>
+        {nodes.map(([x, y, c], i) => (
+          <circle key={i} cx={x} cy={y} r={i === 6 ? 3 : 2.1} fill={c}
+            className="node-dot" style={{ animationDelay: (i * 0.28) + 's' }} />
+        ))}
+      </svg>
+      <style>{`
+        .node-orb{position:relative;filter:drop-shadow(0 0 6px oklch(.8 .13 220/.4));}
+        .node-svg{display:block;animation:nodeBreathe 6s ease-in-out infinite;}
+        .node-dot{transform-origin:center;animation:nodePulse 2.6s ease-in-out infinite;}
+        @keyframes nodePulse{0%,100%{opacity:.55}50%{opacity:1}}
+        @keyframes nodeBreathe{0%,100%{transform:rotate(-4deg) scale(.98)}50%{transform:rotate(4deg) scale(1.02)}}
+      `}</style>
+    </span>
+  );
+}
+
 const SUGGEST = [
   'What does the O74C735K1 mix tell me about 28-day strength?',
   'Did my last entry meet design strength?',
@@ -63,7 +96,7 @@ Write Alfred's next reply only.`;
       <aside className={'chat glass' + (open ? ' on' : '')} aria-hidden={!open}>
         <header className="chat-head">
           <div className="chat-id">
-            <span className="chat-orb"></span>
+            <NodeOrb size={30} />
             <div>
               <div className="chat-title disp">ALFRED</div>
               <div className="chat-sub mono">{entries.length} record{entries.length === 1 ? '' : 's'} in the brain · live</div>
@@ -167,4 +200,4 @@ function buildContext(entries) {
   }).join('\n');
 }
 
-Object.assign(window, { ChatPanel });
+Object.assign(window, { ChatPanel, NodeOrb });

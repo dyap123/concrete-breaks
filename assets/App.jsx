@@ -211,7 +211,7 @@ function App() {
       {/* ---------- CHAT TAB ---------- */}
       {!chatOpen && (
         <button className="chat-tab" onClick={() => setChatOpen(true)}>
-          <span className="chat-tab-orb"></span>
+          <window.NodeOrb size={20} />
           <span className="chat-tab-lab">ALFRED</span>
         </button>
       )}

@@ -71,6 +71,7 @@ function BreakRow({ age, entry, set, mix, fc }) {
 /* ---- the live readout rail --------------------------------------- */
 function Readout({ entry, mix, res }) {
   const designAvg = res.designAge && res.ages[res.designAge] ? res.ages[res.designAge].avg : null;
+  const designCov = res.designAge && res.ages[res.designAge] ? res.ages[res.designAge].cov : null;
   return (
     <div className="ro">
       <div className="ro-card glass">
@@ -115,12 +116,12 @@ function Readout({ entry, mix, res }) {
         </div>
 
         <div className="ro-stats">
-          <Stat label="Time elapsed" value={res.elapsed !== null ? window.fmt(res.elapsed, 2) + ' h' : '—'} hint="batch → sample" />
+          <Stat label="Design avg" value={designAvg !== null ? window.fmt(designAvg) + ' psi' : '—'} hint={res.designAge ? res.designAge + '-day' : ''} />
+          <Stat label="Design COV" value={designCov != null ? window.fmt(designCov, 1) + '%' : '—'} hint="C39 within-test" />
           <Stat label="7→28d gain" value={res.gain7_28 !== null ? '+' + window.fmt(res.gain7_28) : '—'}
             hint={res.gain7_28pct !== null ? '+' + window.fmt(res.gain7_28pct, 0) + '%' : ''} />
           <Stat label="7→56d gain" value={res.gain7_56 !== null ? '+' + window.fmt(res.gain7_56) : '—'}
             hint={res.gain7_56pct !== null ? '+' + window.fmt(res.gain7_56pct, 0) + '%' : ''} />
-          <Stat label="Slump · Air" value={(entry.slump || '—') + '" · ' + (entry.air || '—')} hint="plastic" />
         </div>
       </div>
       <style>{`
@@ -228,23 +229,8 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
               </div>
             </Section>
 
-            {/* ---- Fresh properties ---- */}
-            <Section n="02" title="Fresh / plastic properties" hint="measured at sampling">
-              <div className="grid3">
-                <Field label="Batch time" hint="HH:MM"><T type="time" value={entry.batchTime} onChange={(e) => set('batchTime', e.target.value)} /></Field>
-                <Field label="Sample time" hint="HH:MM"><T type="time" value={entry.sampleTime} onChange={(e) => set('sampleTime', e.target.value)} /></Field>
-                <Field label="Elapsed" hint="auto">
-                  <div className="inp ro-readonly mono">{res.elapsed !== null ? window.fmt(res.elapsed, 2) + ' h' : '—'}</div>
-                </Field>
-                <Field label="Ambient temp" unit="°F"><T type="number" value={entry.ambient} onChange={(e) => set('ambient', e.target.value)} className="inp mono" /></Field>
-                <Field label="Actual slump" unit="in"><T type="number" step="0.25" value={entry.slump} onChange={(e) => set('slump', e.target.value)} className="inp mono" /></Field>
-                <Field label="Air content" unit="%"><Sel options={window.AIR_OPTS} value={entry.air} onChange={(e) => set('air', e.target.value)} /></Field>
-                <Field label="Actual W/C ratio"><T type="number" step="0.01" value={entry.actualWC} onChange={(e) => set('actualWC', e.target.value)} className="inp mono" placeholder="0.45" /></Field>
-              </div>
-            </Section>
-
             {/* ---- Breaks ---- */}
-            <Section n="03" title="Cylinder break strengths" hint="three cylinders per age · psi">
+            <Section n="02" title="Cylinder break strengths" hint="add as many cylinders per age as you took · psi">
               <div className="brk-list">
                 {window.BREAK_AGES.map((age) => (
                   <BreakRow key={age} age={age} entry={entry} set={set} mix={mix} fc={fc} />
@@ -253,7 +239,7 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
             </Section>
 
             {/* ---- Admixtures & notes ---- */}
-            <Section n="04" title="Admixtures & notes" hint="editable — rename, set unit, add or remove">
+            <Section n="03" title="Admixtures & notes" hint="editable — rename, set unit, add or remove">
               <div className="admx-list">
                 <div className="admx-head mono"><span>Admixture</span><span>Unit</span><span>Per load</span><span></span></div>
                 {admx.map((a, idx) => (
@@ -351,7 +337,21 @@ function FormStyles() {
     .inp.sel{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b94c0' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
       background-repeat:no-repeat;background-position:right 11px center;padding-right:28px;}
     .inp.sel option{background:#0e1533;}
-    input[type=date].inp,input[type=time].inp{color-scheme:dark;}
+    /* themed date / time pickers — dark popup, cyan accents, mono digits */
+    input[type=date].inp,input[type=time].inp{color-scheme:dark;accent-color:var(--cyan);
+      font-family:var(--font-m);letter-spacing:.02em;background-image:linear-gradient(0deg,oklch(.8 .13 205/.04),oklch(.8 .13 205/.04));}
+    input[type=date].inp:hover,input[type=time].inp:hover{border-color:var(--line-strong);}
+    input[type=date].inp::-webkit-calendar-picker-indicator,
+    input[type=time].inp::-webkit-calendar-picker-indicator{
+      cursor:pointer;opacity:.85;border-radius:4px;padding:2px;
+      filter:invert(74%) sepia(46%) saturate(560%) hue-rotate(150deg) brightness(102%);}
+    input[type=date].inp::-webkit-calendar-picker-indicator:hover,
+    input[type=time].inp::-webkit-calendar-picker-indicator:hover{opacity:1;background:oklch(.8 .13 205/.15);}
+    input[type=date].inp::-webkit-datetime-edit-fields-wrapper,
+    input[type=time].inp::-webkit-datetime-edit{color:var(--ink);}
+    input[type=date].inp::-webkit-datetime-edit-text{color:var(--ink-faint);padding:0 1px;}
+    input[type=date].inp:focus::-webkit-datetime-edit,
+    input[type=time].inp:focus::-webkit-datetime-edit{color:#fff;}
     .ta{resize:vertical;line-height:1.5;font-family:var(--font-b);}
     .ro-readonly{background:rgba(8,12,28,.35);color:var(--cyan);display:flex;align-items:center;}
     /* break rows */
