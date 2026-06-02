@@ -196,7 +196,50 @@ when the team is one or two people moving fast.
 
 ---
 
-## 7. The through-line
+## 7. Rendering performance & the GPU (Lite mode)
+
+A web page is painted in layers, and most are handed to the **GPU** to *composite* (stack and
+combine) cheaply. The trouble starts when an effect forces the GPU — or worse, the CPU — to
+**re-render pixels every frame**. On a laptop with no discrete GPU (integrated graphics sharing
+system RAM), three effects dominate the cost, and OpenBreak's **Lite mode** targets exactly them:
+
+- **Large blur filters.** `filter: blur(60px)` on a viewport-sized element (the nebulae) makes the
+  GPU sample a huge neighborhood of pixels per output pixel. Cost scales with *area × radius²* — a
+  full-screen 60px blur is brutal. Lite hides them.
+- **`backdrop-filter` (frosted glass).** This blurs *everything behind* the element — and because
+  what's behind changes as you scroll, it's **recomputed on every scroll frame**. It's the
+  single worst offender for scroll-jank. Lite swaps glass panels for solid fills.
+- **Continuous `requestAnimationFrame` loops.** The starfield repaints a full-screen canvas 60×/sec
+  forever. Lite draws **one static frame and cancels the loop** — zero ongoing cost.
+
+Principles at work:
+- **Know the cost model.** Performance optimization isn't "make everything faster"; it's *finding
+  the few operations that dominate* and removing those. 90% of the lag came from 3 effects.
+- **Composite, don't repaint.** Cheap animations only move/scale/fade existing layers
+  (`transform`/`opacity` — what the celebration and node orbs use). Expensive ones force a
+  re-paint (blur, shadow, layout). Prefer the former.
+- **Feature/▸context detection + graceful degradation.** Lite auto-enables for
+  `prefers-reduced-motion`, is user-toggleable, and is applied to `<html>` *before first paint* so
+  the heavy version never flashes. The app stays fully functional — only the eye-candy degrades.
+- **The same lever in three places.** The Chart.js `shadowBlur` glow, the celebration particle
+  count, and the CSS animations all read the one `perf-lite` flag. One switch, consistent behavior.
+
+## 8. Backward compatibility (the rename)
+
+When "Orbital" became "OpenBreak", every *visible* label changed — but the **`localStorage` keys
+stayed `orbital_*`**. Those keys hold each device's sign-in, grid toggle, lite preference and dino
+high-score. Renaming them would have silently wiped that state for everyone mid-use.
+
+> A name is a contract. Changing what users *see* is cosmetic; changing a **storage key, an API
+> path, or a database field** breaks the contract with already-saved data.
+
+This is the same reason the Firebase namespace stays `concrete-breaks/` and the LLM shim keeps the
+name `window.claude.complete`: **identifiers that something else depends on are interface, not
+decoration.** You rename them only with a migration (read-old-write-new fallback), never casually.
+
+---
+
+## 9. The through-line
 
 If you remember one idea from each layer:
 
@@ -208,6 +251,8 @@ If you remember one idea from each layer:
 | Concurrency | Make the read-modify-write atomic. |
 | LLM | Ground it in injected context; let it act via parsed commands. |
 | Output | One model of the data, many encodings (CSV/Excel/PDF). |
+| Rendering | Composite, don't repaint; remove the few costs that dominate. |
+| Compatibility | Visible names are cosmetic; storage keys and paths are contracts. |
 | Deployment | Optimize for iteration speed. |
 
 Every feature in OpenBreak is one of these principles applied to concrete (pun intended).
