@@ -27,12 +27,16 @@ function App() {
   const [toast, setToast] = useStateApp(null);
   const [admixtures, setAdmixtures] = useStateApp(window.DEFAULT_ADMIXTURES);
 
-  const mixes = useMemoApp(() => [...window.MIX_DESIGNS, ...customMixes], [customMixes]);
+  // all mixes live in Firebase (seeded from the built-ins) so they're editable + shared
+  const mixes = useMemoApp(() => customMixes.length ? customMixes : window.MIX_DESIGNS, [customMixes]);
 
   /* ---- Firebase subscriptions (shared, real-time) ---- */
   useEffectApp(() => {
     fb.listen('entries', (v) => setEntries(sortByCreated(v)));
-    fb.listen('customMixes', (v) => setCustomMixes(Object.values(v || {})));
+    fb.listen('mixDesigns', (v) => {
+      if (!v) { const seed = {}; window.MIX_DESIGNS.forEach((m) => { seed[m.code] = m; }); fb.set('mixDesigns', seed); return; } // seed once
+      setCustomMixes(Object.values(v));
+    });
     fb.listen('users', (v) => {
       const list = sortByCreated(v);
       if (!list.length) { fb.set('users/u_danzel', SEED_MANAGER); return; } // seed manager once
@@ -79,7 +83,9 @@ function App() {
     }
     setView('records');
   }, [flash, currentId, currentUser, entries]);
-  const addMix = useCbApp((m) => { fb.set('customMixes/' + m.code, m); flash('Mix ' + m.code + ' added'); }, [flash]);
+  const addMix = useCbApp((m) => { fb.set('mixDesigns/' + m.code, m); flash('Mix ' + m.code + ' added'); }, [flash]);
+  const saveMix = useCbApp((code, patch) => { fb.update('mixDesigns/' + code, patch); flash('Mix ' + code + ' updated'); }, [flash]);
+  const deleteMix = useCbApp((code) => { fb.remove('mixDesigns/' + code); flash('Mix ' + code + ' removed'); }, [flash]);
   const editEntry = useCbApp((e) => {
     setActiveMix(mixes.find((m) => m.code === e.mix) || null); setCurrent(e); setView('entry');
   }, [mixes]);
@@ -178,6 +184,7 @@ function App() {
         <div className="rail-nav">
           <RailBtn active={view === 'mix' || view === 'entry'} icon="✦" label="New record" onClick={gotoMix} />
           <RailBtn active={view === 'records'} icon="▤" label="Dashboard" badge={entries.length} onClick={() => setView('records')} />
+          <RailBtn active={view === 'mixes'} icon="◆" label="Mix designs" onClick={() => setView('mixes')} />
           <RailBtn active={view === 'leaderboard'} icon="★" label="Leaderboard" onClick={() => setView('leaderboard')} />
         </div>
 
@@ -209,6 +216,9 @@ function App() {
         {view === 'records' && (
           <RecordsView entries={entries} mixes={mixes} onNew={gotoMix} onEdit={editEntry}
             onDelete={deleteEntry} onExport={exportCSV} onCopy={copyTSV} />
+        )}
+        {view === 'mixes' && (
+          <MixManager mixes={mixes} counts={counts} onSave={saveMix} onDelete={deleteMix} onAdd={addMix} />
         )}
         {view === 'leaderboard' && (
           <window.Leaderboard users={users} entries={entries} currentId={currentId} onLog={gotoMix}
@@ -363,6 +373,108 @@ function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy
       </div>
     </div>
   );
+}
+
+/* ---- mix designs manager: edit / delete / add mixes ---- */
+function MixEditRow({ mix, count, onSave, onDelete }) {
+  const [m, setM] = React.useState(mix);
+  React.useEffect(() => setM(mix), [mix.code]);
+  const dirty = JSON.stringify(m) !== JSON.stringify(mix);
+  const h = window.accentForStrength(window.num(m.fc));
+  const upd = (k, v) => setM((x) => ({ ...x, [k]: v }));
+  const save = () => onSave(mix.code, { fc: window.num(m.fc), age: parseInt(m.age) || 28, use: m.use || '', agg: m.agg || '', accent: window.accentForStrength(window.num(m.fc)) });
+  return (
+    <div className="mm-row glass" style={{ '--h': h }}>
+      <div className="mm-row-code">
+        <span className="mm-dot"></span>
+        <span className="mm-code disp">{mix.code}</span>
+        <span className="mm-tier mono">{window.strengthTier(window.num(m.fc))}</span>
+      </div>
+      <div className="mm-fields">
+        <label className="mm-f">f'c<span className="mm-unit">psi</span><input className="mm-in mono" type="number" value={m.fc ?? ''} onChange={(e) => upd('fc', e.target.value)} placeholder="slurry" /></label>
+        <label className="mm-f">Age<span className="mm-unit">d</span><input className="mm-in mono" type="number" value={m.age ?? ''} onChange={(e) => upd('age', e.target.value)} /></label>
+        <label className="mm-f">Agg<input className="mm-in mono" value={m.agg || ''} onChange={(e) => upd('agg', e.target.value)} placeholder='1"' /></label>
+        <label className="mm-f wide">Use<input className="mm-in" value={m.use || ''} onChange={(e) => upd('use', e.target.value)} /></label>
+      </div>
+      <div className="mm-row-act">
+        <span className="mm-count mono">{count || 0} logged</span>
+        <button className="btn-primary mm-save" disabled={!dirty} onClick={save}><span>Save</span></button>
+        <button className="mm-del" title="delete mix" onClick={() => { if (confirm('Delete mix ' + mix.code + '?')) onDelete(mix.code); }}>×</button>
+      </div>
+    </div>
+  );
+}
+function MixManager({ mixes, counts, onSave, onDelete, onAdd }) {
+  const [add, setAdd] = React.useState(false);
+  const [f, setF] = React.useState({ code: '', fc: '', age: '28', use: '', agg: '' });
+  const submit = () => {
+    if (!f.code.trim()) return;
+    const fc = window.num(f.fc);
+    onAdd({ code: f.code.trim().toUpperCase(), fc, age: parseInt(f.age) || 28, use: f.use.trim() || 'Custom mix', agg: f.agg.trim(), area: '', accent: window.accentForStrength(fc), tests: 0 });
+    setF({ code: '', fc: '', age: '28', use: '', agg: '' }); setAdd(false);
+  };
+  return (
+    <div className="mm scrollY">
+      <div className="mm-inner">
+        <header className="rec-head fadeUp">
+          <div>
+            <div className="ms-eyebrow mono">◇ MIX LIBRARY</div>
+            <h1 className="ms-h1 disp">Mix designs</h1>
+            <p className="lb-lead" style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--ink-dim)' }}>Edit strengths, ages and uses — colour tracks the strength tier. Shared across the crew.</p>
+          </div>
+          <button className="btn-primary" onClick={() => setAdd((a) => !a)}><span>✦ Add mix</span></button>
+        </header>
+        {add && (
+          <div className="mm-add glass fadeUp">
+            <input className="mm-in mono" style={{ flex: 1, minWidth: 150 }} autoFocus placeholder="MIX CODE  e.g. O90C735K1" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+            <input className="mm-in mono" style={{ width: 100 }} type="number" placeholder="f'c psi" value={f.fc} onChange={(e) => setF({ ...f, fc: e.target.value })} />
+            <input className="mm-in mono" style={{ width: 72 }} type="number" placeholder="age" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} />
+            <input className="mm-in mono" style={{ width: 70 }} placeholder="agg" value={f.agg} onChange={(e) => setF({ ...f, agg: e.target.value })} />
+            <input className="mm-in" style={{ flex: 1, minWidth: 120 }} placeholder="use" value={f.use} onChange={(e) => setF({ ...f, use: e.target.value })} />
+            <button className="btn-primary" onClick={submit}><span>Add</span></button>
+          </div>
+        )}
+        <div className="mm-list">
+          {mixes.map((m) => <MixEditRow key={m.code} mix={m} count={counts[m.code]} onSave={onSave} onDelete={onDelete} />)}
+        </div>
+      </div>
+      <MixManagerStyles />
+    </div>
+  );
+}
+function MixManagerStyles() {
+  return <style>{`
+    .mm{height:100%;}
+    .mm-inner{max-width:1000px;margin:0 auto;padding:48px 40px 60px;}
+    .mm-add{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:14px;border-radius:var(--r-md);
+      border-color:var(--line-strong);margin-bottom:18px;}
+    .mm-in{background:rgba(8,12,28,.6);border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+      font-size:13px;color:var(--ink);outline:none;}
+    .mm-in:focus{border-color:var(--cyan);}
+    .mm-list{display:flex;flex-direction:column;gap:10px;}
+    .mm-row{display:grid;grid-template-columns:170px 1fr auto;gap:16px;align-items:center;
+      padding:14px 18px;border-radius:var(--r-md);border-color:var(--line);transition:.15s;}
+    .mm-row:hover{border-color:oklch(.8 .14 var(--h)/.45);}
+    .mm-row-code{display:flex;flex-direction:column;gap:3px;position:relative;padding-left:14px;}
+    .mm-dot{position:absolute;left:0;top:5px;width:8px;height:8px;border-radius:50%;
+      background:oklch(.78 .15 var(--h));box-shadow:0 0 10px oklch(.78 .15 var(--h)/.8);}
+    .mm-code{font-size:16px;color:var(--ink);text-shadow:0 0 14px oklch(.8 .14 var(--h)/.4);}
+    .mm-tier{font-size:10px;color:oklch(.85 .12 var(--h));}
+    .mm-fields{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+    .mm-f{display:flex;flex-direction:column;gap:4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);position:relative;}
+    .mm-f.wide{flex:1;min-width:150px;}
+    .mm-f .mm-unit{position:absolute;right:8px;bottom:9px;font-size:9px;color:var(--ink-faint);text-transform:none;}
+    .mm-f .mm-in{width:92px;}
+    .mm-f.wide .mm-in{width:100%;}
+    .mm-row-act{display:flex;align-items:center;gap:10px;}
+    .mm-count{font-size:10px;color:var(--ink-faint);white-space:nowrap;}
+    .mm-save{padding:8px 14px;font-size:12px;}
+    .mm-save:disabled{opacity:.35;box-shadow:none;cursor:default;transform:none;}
+    .mm-del{width:30px;height:30px;border-radius:8px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+      color:var(--ink-faint);font-size:16px;}
+    .mm-del:hover{color:var(--red);border-color:var(--red);}
+    @media (max-width:860px){.mm-row{grid-template-columns:1fr;}.mm-row-act{justify-content:flex-end;}}
+  `}</style>;
 }
 
 function AppStyles() {

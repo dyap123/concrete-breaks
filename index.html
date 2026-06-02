@@ -67,6 +67,10 @@ body{
 .disp{font-family:var(--font-d);}
 button{font-family:inherit;cursor:pointer;color:inherit;}
 input,select,textarea{font-family:inherit;color:inherit;}
+/* remove the ugly native number spinner arrows everywhere */
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
 .scrollY{overflow-y:auto;overflow-x:hidden;}
 /* global buttons (also used outside EntryForm, e.g. the Dashboard/empty states) */
