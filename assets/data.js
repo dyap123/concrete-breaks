@@ -32,7 +32,8 @@ const MIX_DESIGNS = [
 ].map((m) => ({ ...m, accent: accentForStrength(m.fc) }));
 
 /* ---- Reference option lists -------------------------------------- */
-const AREAS = ['Sequence 1', 'Sequence 2', 'Sequence 3', 'Sequence 4', 'South Hall', 'CUP', 'Area A', 'Area B', 'Area C', 'Area D', 'Other'];
+const AREAS = ['A', 'B', 'C', 'D'];
+const SEQUENCES = ['1', '2', '3', '4', 'CUP', 'South Hall'];
 const ELEMENTS = [
   'Pile Cap', 'Foundation', 'Wall', 'Slab', 'Footing', 'Mild Deck',
   'Horizontal Rat Slab', 'Protection Slab', 'Sump Pit Slab', 'Column', 'Backfill', 'Other',
@@ -48,8 +49,14 @@ const DEFAULT_ADMIXTURES = [
   { key: 'delvo',     label: 'Delvo',     unit: 'oz' },
 ];
 const ADMIXTURES = DEFAULT_ADMIXTURES; // back-compat alias
-/* break ages to capture — each holds a test date + three cylinder breaks */
+/* default break ages — each holds a test date + a list of cylinder breaks.
+   Per entry you can add more (e.g. an earlier 3- or 14-day break). */
 const BREAK_AGES = [7, 28, 56, 90];
+/* the actual ages an entry tracks (defaults + any custom ones added) */
+function entryAges(entry) {
+  const a = Array.isArray(entry && entry.ages) && entry.ages.length ? entry.ages : BREAK_AGES;
+  return [...new Set(a.map(Number))].sort((x, y) => x - y);
+}
 
 /* ---- Calculation helpers ----------------------------------------- */
 const num = (v) => {
@@ -144,7 +151,7 @@ function computeResults(entry, mix) {
   const fc = num(entry.fc) ?? mix?.fc ?? null;
   const ages = {};
   let designAvg = null;
-  BREAK_AGES.forEach((age) => {
+  entryAges(entry).forEach((age) => {
     const cyl = Array.isArray(entry['d' + age]) ? entry['d' + age]
       : [entry['d' + age + '_1'], entry['d' + age + '_2'], entry['d' + age + '_3']]; // legacy fallback
     const a = avg(cyl);
@@ -161,15 +168,16 @@ function computeResults(entry, mix) {
   const da = designAge && ages[designAge] ? ages[designAge].avg : null;
   const met = da !== null && fc ? da >= fc : null;
 
-  const gain7_28 = ages[7].avg !== null && ages[28].avg !== null ? ages[28].avg - ages[7].avg : null;
-  const gain7_56 = ages[7].avg !== null && ages[56].avg !== null ? ages[56].avg - ages[7].avg : null;
+  const a7 = ages[7] ? ages[7].avg : null, a28 = ages[28] ? ages[28].avg : null, a56 = ages[56] ? ages[56].avg : null;
+  const gain7_28 = a7 !== null && a28 !== null ? a28 - a7 : null;
+  const gain7_56 = a7 !== null && a56 !== null ? a56 - a7 : null;
 
   return {
     fc, designAge, ages, met,
     elapsed: elapsedHrs(entry.batchTime, entry.sampleTime),
     gain7_28, gain7_56,
-    gain7_28pct: gain7_28 !== null && ages[7].avg ? (gain7_28 / ages[7].avg) * 100 : null,
-    gain7_56pct: gain7_56 !== null && ages[7].avg ? (gain7_56 / ages[7].avg) * 100 : null,
+    gain7_28pct: gain7_28 !== null && a7 ? (gain7_28 / a7) * 100 : null,
+    gain7_56pct: gain7_56 !== null && a7 ? (gain7_56 / a7) * 100 : null,
   };
 }
 
@@ -182,7 +190,9 @@ function blankEntry(mix) {
     mix: mix?.code || '',
     fc: mix?.fc || '',
     age: mix?.age || '',
-    area: mix?.area || '',
+    area: '',
+    sequence: '',
+    ages: BREAK_AGES.slice(),
     element: '',
     pourNumber: '',
     pourDate: '',
@@ -213,8 +223,13 @@ function entriesToCSV(entries, admixtures) {
   admixtures = admixtures || DEFAULT_ADMIXTURES;
   const cylArr = (e, age) => Array.isArray(e['d' + age]) ? e['d' + age]
     : [e['d' + age + '_1'], e['d' + age + '_2'], e['d' + age + '_3']];
+  // union of all ages logged across the entries (defaults + custom earlier breaks)
+  const ageSet = new Set();
+  entries.forEach((e) => entryAges(e).forEach((a) => ageSet.add(a)));
+  BREAK_AGES.forEach((a) => ageSet.add(a));
+  const ages = [...ageSet].sort((x, y) => x - y);
   const maxCyl = {};
-  BREAK_AGES.forEach((age) => {
+  ages.forEach((age) => {
     maxCyl[age] = 3;
     entries.forEach((e) => { maxCyl[age] = Math.max(maxCyl[age], cylArr(e, age).length); });
   });
@@ -222,12 +237,11 @@ function entriesToCSV(entries, admixtures) {
     ['NCR?', (e) => e.ncr ? 'YES' : ''], ['Graphed?', (e) => e.graphed ? 'YES' : ''],
     ['Pour Number', (e) => e.pourNumber], ['Pour Date', (e) => e.pourDate],
     ['IR#', (e) => e.ir], ['Batch Ticket #', (e) => e.ticket],
-    ['Batch Time', (e) => e.batchTime], ['Sample Time', (e) => e.sampleTime],
-    ['Area', (e) => e.area], ['Element', (e) => e.element], ['Design Days', (e) => e.age],
-    ['Mix Design', (e) => e.mix], ['Ambient Temp', (e) => e.ambient],
-    ['Actual Slump', (e) => e.slump], ['Air Content', (e) => e.air], ['Design Strength', (e) => e.fc],
+    ['Area', (e) => e.area], ['Sequence', (e) => e.sequence], ['Element', (e) => e.element],
+    ['Design Days', (e) => e.age], ['Mix Design', (e) => e.mix],
+    ['Actual Slump', (e) => e.slump], ['Design Strength', (e) => e.fc],
   ];
-  BREAK_AGES.forEach((age) => {
+  ages.forEach((age) => {
     cols.push([age + ' Day Test Date', (e) => e['d' + age + '_date']]);
     for (let i = 0; i < maxCyl[age]; i++) cols.push([age + 'D Str ' + (i + 1), (e) => cylArr(e, age)[i] ?? '']);
   });
@@ -270,7 +284,7 @@ function initials(name) {
 }
 
 Object.assign(window, {
-  MIX_DESIGNS, AREAS, ELEMENTS, AIR_OPTS, ADMIXTURES, BREAK_AGES,
+  MIX_DESIGNS, AREAS, SEQUENCES, ELEMENTS, AIR_OPTS, ADMIXTURES, BREAK_AGES, entryAges,
   num, avg, range, stdev, cov, c39Verdict, elapsedHrs, addDays,
   isoToSerial, fmt, computeResults, blankEntry, entriesToCSV,
   RANKS, rankFor, nextRank, hueFromName, initials,

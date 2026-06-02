@@ -18,9 +18,16 @@ function NodeOrb({ size = 30 }) {
   return (
     <span className="node-orb" style={{ width: size, height: size, display: 'inline-block' }}>
       <svg viewBox="0 0 40 40" width={size} height={size} className="node-svg">
-        <g stroke="oklch(.8 .12 220 / .45)" strokeWidth="0.8">
+        <g stroke="oklch(.8 .12 220 / .35)" strokeWidth="0.8">
           {edges.map(([a, b], i) => (
             <line key={i} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]} />
+          ))}
+        </g>
+        {/* flowing signal pulses travelling along the connections */}
+        <g stroke="oklch(.92 .14 200 / .9)" strokeWidth="1" strokeLinecap="round" className="node-flow">
+          {edges.map(([a, b], i) => (
+            <line key={i} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]}
+              style={{ animationDelay: (i * 0.18) + 's' }} />
           ))}
         </g>
         {nodes.map(([x, y, c], i) => (
@@ -32,7 +39,9 @@ function NodeOrb({ size = 30 }) {
         .node-orb{position:relative;filter:drop-shadow(0 0 6px oklch(.8 .13 220/.4));}
         .node-svg{display:block;animation:nodeBreathe 6s ease-in-out infinite;}
         .node-dot{transform-origin:center;animation:nodePulse 2.6s ease-in-out infinite;}
-        @keyframes nodePulse{0%,100%{opacity:.55}50%{opacity:1}}
+        .node-flow line{stroke-dasharray:1.6 7;stroke-dashoffset:0;animation:nodeFlow 1.5s linear infinite;}
+        @keyframes nodePulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.08)}}
+        @keyframes nodeFlow{to{stroke-dashoffset:-8.6}}
         @keyframes nodeBreathe{0%,100%{transform:rotate(-4deg) scale(.98)}50%{transform:rotate(4deg) scale(1.02)}}
       `}</style>
     </span>
@@ -67,9 +76,14 @@ function ChatPanel({ open, onClose, entries }) {
 
     const ctx = buildContext(entries);
     const convo = next.map((m) => `${m.role === 'user' ? 'Engineer' : 'Alfred'}: ${m.text}`).join('\n');
-    const prompt = `You are "Alfred", an embedded assistant inside a concrete break-test logging app used by construction QA interns. You are precise, friendly, and concise. You understand concrete: mix designs, compressive break tests at 7/28/56/90-day ages, design strength f'c, %f'c, slump, air content, water-cement ratio, ASTM C39 within-test variability, and ACI 214 control standards.
+    const prompt = `You are "Alfred" — the OpenYap assistant living inside a concrete break-test logger for construction QA crews. Personality: sharp, concise, a little funny. You know concrete cold (mix designs, 7/28/56/90-day breaks, design strength f'c, %f'c, ASTM C39 within-test range, ACI 214) and you know WHERE every pour is (area, sequence, element, pour #) from the data.
 
-When asked about logged data, use ONLY the session data below. If the data doesn't contain the answer, say so plainly. Keep answers short (2-5 sentences) unless asked to elaborate. Plain text only, no markdown headers.
+Rules:
+- When someone asks for info, GIVE the info. No throat-clearing, no "great question", no restating their question. Lead with the answer — numbers and locations first.
+- Be brief: usually 1-3 sentences.
+- A dry one-liner is welcome, but never at the expense of the answer. If they just want data, give data, then stop.
+- Use ONLY the data below for anything project-specific. If it's not there, say so in one line.
+- Plain text. No markdown headers or bullet dumps unless asked.
 
 === SESSION DATA ===
 ${ctx}
@@ -192,9 +206,9 @@ function buildContext(entries) {
       const v = r.ages[a].avg;
       return v !== null ? `${a}d avg ${Math.round(v)}psi` : null;
     }).filter(Boolean).join(', ');
-    return `Record ${i + 1}: mix ${e.mix || '?'}, pour #${e.pourNumber || '?'} ${e.pourDate || ''}, ` +
-      `element ${e.element || '?'} @ ${e.area || '?'}, f'c ${r.fc || '?'}psi design age ${r.designAge || '?'}d. ` +
-      `Slump ${e.slump || '?'}in, air ${e.air}, ambient ${e.ambient || '?'}F. ` +
+    const loc = [e.area ? 'Area ' + e.area : '', e.sequence ? 'Seq ' + e.sequence : '', e.element || ''].filter(Boolean).join(' · ') || 'location ?';
+    return `Record ${i + 1}: mix ${e.mix || '?'}, pour #${e.pourNumber || '?'} ${e.pourDate || ''}. ` +
+      `Location: ${loc}. f'c ${r.fc || '?'}psi @ ${r.designAge || '?'}d. ` +
       `Breaks: ${ageLine || 'none yet'}. Met design strength: ${r.met === null ? 'n/a' : r.met ? 'YES' : 'NO'}.` +
       (e.comments ? ` Notes: ${e.comments}` : '');
   }).join('\n');

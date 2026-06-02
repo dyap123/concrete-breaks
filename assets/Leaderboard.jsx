@@ -2,8 +2,9 @@
    Leaderboard — crew standings. Manager (Danzel) featured up top;
    interns ranked by points with a top-3 podium and a full list.
 ==================================================================== */
-function Leaderboard({ users, entries, currentId, onLog }) {
+function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember, onRemoveMember }) {
   const Avatar = window.Avatar;
+  const [newName, setNewName] = React.useState('');
   const manager = users.find((u) => u.role === 'manager');
   const interns = users.filter((u) => u.role === 'intern')
     .map((u) => ({ ...u, logged: entries.filter((e) => e.loggedBy === u.id).length }))
@@ -12,6 +13,16 @@ function Leaderboard({ users, entries, currentId, onLog }) {
   const podium = interns.slice(0, 3);
   const rest = interns.slice(3);
   const order = [1, 0, 2]; // visual L-M-R so #1 sits centre
+
+  // points-per-crew bar chart
+  const chartData = {
+    labels: interns.map((u) => u.name),
+    datasets: [{
+      label: 'Points', data: interns.map((u) => u.points), borderRadius: 6,
+      backgroundColor: interns.map((u) => `oklch(.78 .14 ${window.hueFromName(u.name)})`),
+    }],
+  };
+  const addMember = () => { const n = newName.trim(); if (!n) return; onAddMember(n); setNewName(''); };
 
   return (
     <div className="lb scrollY">
@@ -38,6 +49,15 @@ function Leaderboard({ users, entries, currentId, onLog }) {
             </div>
           </div>
         )}
+
+        <div className="lb-ladder fadeUp">
+          {window.RANKS.map((r) => (
+            <div className="ladder-step" key={r.title}>
+              <span className="ladder-pt mono">{r.min}</span>
+              <span className="ladder-title">{r.title}</span>
+            </div>
+          ))}
+        </div>
 
         {interns.length === 0 ? (
           <div className="lb-empty mono">No crew yet — sign in and log a pour to start the board.</div>
@@ -82,7 +102,41 @@ function Leaderboard({ users, entries, currentId, onLog }) {
                 })}
               </div>
             )}
+
+            {interns.length > 0 && window.ChartCanvas && (
+              <div className="lb-chart glass">
+                <div className="lb-chart-head"><h3 className="disp">Points by crew</h3><span className="mono">{entries.length} total pours</span></div>
+                <window.ChartCanvas type="bar" data={chartData} height={Math.max(160, interns.length * 34)}
+                  options={{ indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { precision: 0 } } } }} />
+              </div>
+            )}
           </>
+        )}
+
+        {isManager && (
+          <div className="lb-manage glass fadeUp">
+            <div className="lb-manage-head">
+              <span className="ms-eyebrow mono" style={{ margin: 0 }}>◆ MANAGER · CREW</span>
+              <span className="lb-manage-sub mono">{interns.length} member{interns.length === 1 ? '' : 's'}</span>
+            </div>
+            <div className="lb-add">
+              <input className="lb-add-in" placeholder="Add a crew member…" value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addMember(); }} />
+              <button className="lb-add-btn" onClick={addMember}>+ Add</button>
+            </div>
+            <div className="lb-manage-list">
+              {interns.map((u) => (
+                <div className="lb-manage-row" key={u.id}>
+                  <Avatar name={u.name} size={28} />
+                  <span className="lb-manage-name">{u.name}</span>
+                  <span className="lb-manage-pts mono">{u.points} pts</span>
+                  <button className="lb-manage-x" title="remove member" onClick={() => { if (confirm('Remove ' + u.name + ' from the crew?')) onRemoveMember(u.id); }}>×</button>
+                </div>
+              ))}
+              {!interns.length && <div className="lb-manage-empty mono">No crew members yet — add one above.</div>}
+            </div>
+          </div>
         )}
       </div>
 
@@ -133,6 +187,36 @@ function Leaderboard({ users, entries, currentId, onLog }) {
         .lb-row-rank{font-size:10px;color:var(--ink-faint);}
         .lb-row-logged{font-size:11px;color:var(--ink-dim);}
         .lb-row-pts{font-size:17px;font-family:var(--font-m);color:var(--cyan);min-width:34px;text-align:right;}
+        /* rank ladder */
+        .lb-ladder{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:24px;}
+        .ladder-step{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;
+          background:rgba(13,19,44,.5);border:1px solid var(--line);}
+        .ladder-pt{font-size:11px;color:var(--cyan);}
+        .ladder-title{font-size:11px;color:var(--ink-dim);}
+        /* points chart */
+        .lb-chart{border-radius:var(--r-lg);padding:16px 18px;margin-top:22px;border-color:var(--line-strong);}
+        .lb-chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+        .lb-chart-head h3{font-size:14px;font-weight:600;margin:0;color:var(--ink);}
+        .lb-chart-head span{font-size:10px;color:var(--ink-faint);}
+        /* manager crew management */
+        .lb-manage{border-radius:var(--r-lg);padding:18px 20px;margin-top:24px;border-color:oklch(.8 .14 60/.3);}
+        .lb-manage-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+        .lb-manage-sub{font-size:10px;color:var(--ink-faint);}
+        .lb-add{display:flex;gap:9px;margin-bottom:14px;}
+        .lb-add-in{flex:1;background:rgba(8,12,28,.6);border:1px solid var(--line);border-radius:10px;
+          padding:10px 13px;color:var(--ink);font-size:13px;outline:none;}
+        .lb-add-in:focus{border-color:var(--cyan);}
+        .lb-add-btn{padding:10px 16px;border-radius:10px;border:none;font-size:13px;font-weight:600;color:#06122a;
+          background:linear-gradient(135deg,var(--cyan),var(--violet));}
+        .lb-manage-list{display:flex;flex-direction:column;gap:6px;}
+        .lb-manage-row{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:10px;
+          background:rgba(8,12,28,.4);border:1px solid var(--line);}
+        .lb-manage-name{flex:1;font-size:13px;color:var(--ink);}
+        .lb-manage-pts{font-size:11px;color:var(--ink-dim);}
+        .lb-manage-x{width:26px;height:26px;border-radius:7px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+          color:var(--ink-faint);font-size:14px;}
+        .lb-manage-x:hover{color:var(--red);border-color:var(--red);}
+        .lb-manage-empty{font-size:12px;color:var(--ink-faint);padding:10px 2px;}
         @media (max-width:720px){.lb-row-logged{display:none;}}
       `}</style>
     </div>

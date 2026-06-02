@@ -17,26 +17,78 @@ function Field({ label, unit, children, hint, wide }) {
 }
 const T = (p) => <input className="inp" {...p} />;
 const Sel = ({ options, ...p }) => (
-  <select className="inp sel" {...p}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+  <select className="inp sel" {...p}>{options.map((o) => <option key={o} value={o}>{o === '' ? '—' : o}</option>)}</select>
 );
+const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/* Custom themed calendar — replaces the native (ugly) date control. */
+function DateField({ value, onChange, compact }) {
+  const [open, setOpen] = useStateE(false);
+  const [view, setView] = useStateE(() => { const d = value ? new Date(value + 'T00:00:00') : new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  useEffectE(() => { if (value) { const d = new Date(value + 'T00:00:00'); setView({ y: d.getFullYear(), m: d.getMonth() }); } }, [value]);
+  const sel = value ? new Date(value + 'T00:00:00') : null;
+  const todayISO = localISO(new Date());
+  const label = sel ? sel.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select date';
+  const first = new Date(view.y, view.m, 1);
+  const startDow = (first.getDay() + 6) % 7;
+  const days = new Date(view.y, view.m + 1, 0).getDate();
+  const monthName = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const iso = (d) => `${view.y}-${String(view.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const shift = (n) => setView((v) => { let m = v.m + n, y = v.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } return { y, m }; });
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  return (
+    <div className={'df' + (compact ? ' compact' : '')}>
+      <button type="button" className={'df-btn' + (sel ? '' : ' empty')} onClick={() => setOpen((o) => !o)}>
+        <span className="df-ic">◷</span><span className="df-val mono">{label}</span>
+      </button>
+      {open && (
+        <>
+          <div className="df-backdrop" onClick={() => setOpen(false)}></div>
+          <div className="df-pop glass">
+            <div className="df-pop-head">
+              <button type="button" className="df-nav" onClick={() => shift(-1)}>‹</button>
+              <span className="df-month disp">{monthName}</span>
+              <button type="button" className="df-nav" onClick={() => shift(1)}>›</button>
+            </div>
+            <div className="df-dow mono">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i}>{d}</span>)}</div>
+            <div className="df-grid">
+              {cells.map((d, i) => d === null
+                ? <span key={i} className="df-cell empty"></span>
+                : <button type="button" key={i} onClick={() => { onChange(iso(d)); setOpen(false); }}
+                    className={'df-cell mono' + (value === iso(d) ? ' sel' : '') + (iso(d) === todayISO ? ' today' : '')}>{d}</button>)}
+            </div>
+            <div className="df-foot">
+              <button type="button" className="df-act" onClick={() => { onChange(todayISO); setOpen(false); }}>Today</button>
+              {sel && <button type="button" className="df-act clear" onClick={() => { onChange(''); setOpen(false); }}>Clear</button>}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /* ---- cylinder break trio with live average ----------------------- */
-function BreakRow({ age, entry, set, mix, fc }) {
+function BreakRow({ age, entry, set, mix, fc, onRemoveAge }) {
   const cyl = Array.isArray(entry['d' + age]) ? entry['d' + age] : ['', '', ''];
   const a = window.avg(cyl);
   const verdict = window.c39Verdict(cyl);
   const pct = a !== null && fc ? (a / fc) * 100 : null;
   const isDesign = age === (window.num(entry.age) ?? mix?.age);
+  const isCustom = !window.BREAK_AGES.includes(age);
   const setCyl = (i, v) => { const next = cyl.slice(); next[i] = v; set('d' + age, next); };
   const addCyl = () => set('d' + age, [...cyl, '']);
   const removeCyl = (i) => { if (cyl.length > 1) set('d' + age, cyl.filter((_, k) => k !== i)); };
   return (
-    <div className={'brk' + (isDesign ? ' design' : '')}>
+    <div className={'brk' + (isDesign ? ' design' : '') + (isCustom ? ' custom' : '')}>
       <div className="brk-head">
         <span className="brk-age disp">{age}<span>day</span></span>
         {isDesign && <span className="brk-tag mono">DESIGN AGE</span>}
-        <input className="inp brk-date" type="date" value={entry[`d${age}_date`] || ''}
-          onChange={(e) => set(`d${age}_date`, e.target.value)} title="auto-filled from pour date" />
+        {isCustom && <span className="brk-tag custom mono">EARLY</span>}
+        <div className="brk-date"><DateField value={entry[`d${age}_date`] || ''} onChange={(v) => set(`d${age}_date`, v)} compact /></div>
+        {isCustom && <button className="brk-rmage" title="remove this break age" onClick={() => onRemoveAge(age)}>×</button>}
       </div>
       <div className="brk-cyls">
         <div className="brk-cyl-grid">
@@ -95,7 +147,8 @@ function Readout({ entry, mix, res }) {
         </div>
 
         <div className="ro-bars">
-          {window.BREAK_AGES.map((age) => {
+          {window.entryAges(entry).map((age) => {
+            if (!res.ages[age]) return null;
             const v = res.ages[age].avg;
             const pct = res.ages[age].pctFc;
             const w = pct !== null ? Math.min(pct, 130) / 130 * 100 : 0;
@@ -186,12 +239,27 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
     if (!entry.pourDate) return;
     setEntry((e) => {
       let changed = false; const next = { ...e };
-      window.BREAK_AGES.forEach((age) => {
+      window.entryAges(e).forEach((age) => {
         if (!e['d' + age + '_date']) { next['d' + age + '_date'] = window.addDays(e.pourDate, age); changed = true; }
       });
       return changed ? next : e;
     });
   }, [entry.pourDate]);
+
+  /* dynamic break ages — add an earlier break (3-day, 14-day…) or remove a custom one */
+  const addAge = () => {
+    const v = prompt('Break age in days (e.g. 3, 14):');
+    const n = parseInt(v, 10);
+    if (!n || n <= 0) return;
+    setEntry((e) => {
+      const ages = [...new Set([...window.entryAges(e), n])].sort((a, b) => a - b);
+      const next = { ...e, ages };
+      if (!Array.isArray(next['d' + n])) next['d' + n] = ['', '', ''];
+      if (!next['d' + n + '_date'] && e.pourDate) next['d' + n + '_date'] = window.addDays(e.pourDate, n);
+      return next;
+    });
+  };
+  const removeAge = (age) => setEntry((e) => ({ ...e, ages: window.entryAges(e).filter((a) => a !== age) }));
 
   /* per-entry admixture value */
   const setAdmx = (key, v) => setEntry((e) => ({ ...e, admx: { ...(e.admx || {}), [key]: v } }));
@@ -219,11 +287,12 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
             <Section n="01" title="Identification & pour" hint="from the batch ticket / inspection report">
               <div className="grid3">
                 <Field label="Pour #"><T value={entry.pourNumber} onChange={(e) => set('pourNumber', e.target.value)} placeholder="e.g. FT 1.5.1" /></Field>
-                <Field label="Pour date"><T type="date" value={entry.pourDate} onChange={(e) => set('pourDate', e.target.value)} /></Field>
+                <Field label="Pour date"><DateField value={entry.pourDate} onChange={(v) => set('pourDate', v)} /></Field>
                 <Field label="IR #"><T value={entry.ir} onChange={(e) => set('ir', e.target.value)} placeholder="inspection rpt" /></Field>
                 <Field label="Batch ticket #"><T value={entry.ticket} onChange={(e) => set('ticket', e.target.value)} placeholder="ticket no." /></Field>
-                <Field label="Area"><Sel options={window.AREAS} value={entry.area} onChange={(e) => set('area', e.target.value)} /></Field>
-                <Field label="Element"><Sel options={window.ELEMENTS} value={entry.element || ''} onChange={(e) => set('element', e.target.value)} /></Field>
+                <Field label="Area"><Sel options={['', ...window.AREAS]} value={entry.area || ''} onChange={(e) => set('area', e.target.value)} /></Field>
+                <Field label="Sequence"><Sel options={['', ...window.SEQUENCES]} value={entry.sequence || ''} onChange={(e) => set('sequence', e.target.value)} /></Field>
+                <Field label="Element"><Sel options={['', ...window.ELEMENTS]} value={entry.element || ''} onChange={(e) => set('element', e.target.value)} /></Field>
                 <Field label="Design strength" unit="psi"><T type="number" value={entry.fc} onChange={(e) => set('fc', e.target.value)} className="inp mono" /></Field>
                 <Field label="Design age" unit="days"><T type="number" value={entry.age} onChange={(e) => set('age', e.target.value)} className="inp mono" /></Field>
               </div>
@@ -232,10 +301,11 @@ function EntryForm({ entry: initial, mix, onSave, onCancel, onChangeMix, admixtu
             {/* ---- Breaks ---- */}
             <Section n="02" title="Cylinder break strengths" hint="add as many cylinders per age as you took · psi">
               <div className="brk-list">
-                {window.BREAK_AGES.map((age) => (
-                  <BreakRow key={age} age={age} entry={entry} set={set} mix={mix} fc={fc} />
+                {window.entryAges(entry).map((age) => (
+                  <BreakRow key={age} age={age} entry={entry} set={set} mix={mix} fc={fc} onRemoveAge={removeAge} />
                 ))}
               </div>
+              <button className="brk-addage" onClick={addAge}>+ Add break age (earlier break)</button>
             </Section>
 
             {/* ---- Admixtures & notes ---- */}
@@ -392,6 +462,48 @@ function FormStyles() {
     .admx-add{align-self:flex-start;margin-top:3px;font-size:12px;color:var(--cyan);
       background:oklch(.8 .13 205/.08);border:1px dashed oklch(.8 .13 205/.4);border-radius:9px;padding:8px 13px;transition:.15s;}
     .admx-add:hover{background:oklch(.8 .13 205/.16);border-style:solid;}
+    /* add break age */
+    .brk-addage{margin-top:11px;font-size:12px;color:var(--cyan);background:oklch(.8 .13 205/.08);
+      border:1px dashed oklch(.8 .13 205/.4);border-radius:10px;padding:9px 14px;transition:.15s;}
+    .brk-addage:hover{background:oklch(.8 .13 205/.16);border-style:solid;}
+    .brk.custom{border-color:oklch(.74 .16 290/.4);background:oklch(.72 .16 290/.05);}
+    .brk-tag.custom{color:var(--violet);border-color:oklch(.72 .16 290/.45);background:oklch(.72 .16 290/.12);}
+    .brk-rmage{width:22px;height:22px;border-radius:6px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+      color:var(--ink-faint);font-size:12px;}
+    .brk-rmage:hover{color:var(--red);border-color:var(--red);}
+    /* custom date picker */
+    .df{position:relative;}
+    .df.compact .df-btn{padding:7px 10px;font-size:12px;}
+    .df-btn{width:100%;display:flex;align-items:center;gap:8px;background:rgba(8,12,28,.6);
+      border:1px solid var(--line);border-radius:9px;padding:10px 11px;color:var(--ink);font-size:13px;
+      transition:border-color .15s,box-shadow .15s;text-align:left;}
+    .df-btn:hover{border-color:var(--line-strong);}
+    .df-btn:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 3px oklch(.8 .13 205/.12);}
+    .df-btn.empty .df-val{color:var(--ink-faint);}
+    .df-ic{color:var(--cyan);font-size:13px;}
+    .df-val{font-size:12.5px;}
+    .df-backdrop{position:fixed;inset:0;z-index:60;}
+    .df-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:61;width:238px;border-radius:var(--r-md);
+      padding:12px;border-color:var(--line-strong);box-shadow:var(--shadow),0 0 40px -20px var(--glow-cyan);animation:popIn .16s both;}
+    .df-pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+    .df-month{font-size:13px;color:var(--ink);}
+    .df-nav{width:26px;height:26px;border-radius:7px;background:rgba(8,12,28,.5);border:1px solid var(--line);
+      color:var(--ink-dim);font-size:15px;line-height:1;}
+    .df-nav:hover{color:var(--ink);border-color:var(--cyan);}
+    .df-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+    .df-dow span{text-align:center;font-size:9px;color:var(--ink-faint);}
+    .df-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .df-cell{height:28px;border-radius:7px;background:none;border:1px solid transparent;color:var(--ink-dim);
+      font-size:12px;transition:.1s;}
+    .df-cell:hover{background:oklch(.8 .13 205/.12);color:var(--ink);}
+    .df-cell.empty{background:none;cursor:default;}
+    .df-cell.today{border-color:var(--line-strong);color:var(--ink);}
+    .df-cell.sel{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#06122a;font-weight:600;}
+    .df-foot{display:flex;gap:7px;margin-top:9px;}
+    .df-act{flex:1;font-size:11px;color:var(--ink-dim);background:rgba(8,12,28,.5);border:1px solid var(--line);
+      border-radius:8px;padding:7px;transition:.12s;}
+    .df-act:hover{color:var(--ink);border-color:var(--cyan);}
+    .df-act.clear:hover{color:var(--red);border-color:var(--red);}
     .brk-avg{font-size:17px;color:var(--ink);font-weight:500;}
     .brk-avglab{font-size:8.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;}
     .brk-foot{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap;}

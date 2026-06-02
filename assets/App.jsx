@@ -93,6 +93,13 @@ function App() {
     fb.set('users/' + id, { name, role: 'intern', points: 0, goat: false, joined: Date.now() });
     setCurrentId(id); setView('mix');
   }, []);
+  /* manager-only: add/remove crew members without signing in as them */
+  const addMember = useCbApp((name) => {
+    const id = 'u_' + Math.random().toString(36).slice(2, 8);
+    fb.set('users/' + id, { name, role: 'intern', points: 0, goat: false, joined: Date.now() });
+    flash(name + ' added to the crew');
+  }, [flash]);
+  const removeMember = useCbApp((id) => { if (id !== currentId) fb.remove('users/' + id); }, [currentId]);
 
   /* ---- export ---- */
   const exportCSV = useCbApp(() => {
@@ -204,7 +211,8 @@ function App() {
             onDelete={deleteEntry} onExport={exportCSV} onCopy={copyTSV} />
         )}
         {view === 'leaderboard' && (
-          <window.Leaderboard users={users} entries={entries} currentId={currentId} onLog={gotoMix} />
+          <window.Leaderboard users={users} entries={entries} currentId={currentId} onLog={gotoMix}
+            isManager={currentUser.role === 'manager'} onAddMember={addMember} onRemoveMember={removeMember} />
         )}
       </main>
 
@@ -236,6 +244,55 @@ function RailBtn({ active, icon, label, badge, onClick }) {
   );
 }
 
+/* ---- dashboard charts: per-mix age averages + cross-mix comparison ---- */
+function ageAvg(entries, code, age) {
+  const v = [];
+  entries.forEach((e) => { if (e.mix !== code) return; const a = window.avg(Array.isArray(e['d' + age]) ? e['d' + age] : []); if (a != null) v.push(a); });
+  return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : null;
+}
+function DashCharts({ entries, mixes }) {
+  const logged = [...new Set(entries.map((e) => e.mix).filter(Boolean))];
+  const [sel, setSel] = React.useState(logged[0] || '');
+  React.useEffect(() => { if (!logged.includes(sel) && logged[0]) setSel(logged[0]); }, [logged.join()]);
+  if (!entries.length) return null;
+  const ages = (() => { const s = new Set(); entries.forEach((e) => window.entryAges(e).forEach((a) => s.add(a))); window.BREAK_AGES.forEach((a) => s.add(a)); return [...s].sort((x, y) => x - y); })();
+  const labels = ages.map((a) => a + 'd');
+  const selMix = mixes.find((m) => m.code === sel);
+  const fc = selMix && selMix.fc;
+  const barData = {
+    labels,
+    datasets: [
+      { label: sel + ' avg', data: ages.map((a) => ageAvg(entries, sel, a)), backgroundColor: window.mixColor(selMix), borderRadius: 6 },
+      ...(fc ? [{ label: "Design f'c", data: ages.map(() => fc), type: 'line', borderColor: 'oklch(.82 .14 70)', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }] : []),
+    ],
+  };
+  const cmpData = {
+    labels,
+    datasets: logged.map((code) => {
+      const m = mixes.find((x) => x.code === code);
+      return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: window.mixColor(m), backgroundColor: window.mixColor(m), tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2 };
+    }),
+  };
+  const yPsi = { y: { title: { display: true, text: 'psi' }, ticks: { callback: (v) => v.toLocaleString() } } };
+  return (
+    <div className="dash-charts fadeUp">
+      <div className="dash-chart glass">
+        <div className="dash-chart-head">
+          <h3 className="disp">Strength by age</h3>
+          <select className="dash-sel mono" value={sel} onChange={(e) => setSel(e.target.value)}>
+            {logged.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <window.ChartCanvas type="bar" data={barData} options={{ plugins: { legend: { display: true, position: 'bottom' } }, scales: yPsi }} height={240} />
+      </div>
+      <div className="dash-chart glass">
+        <div className="dash-chart-head"><h3 className="disp">Compare mixes</h3><span className="dash-sub mono">avg strength by age</span></div>
+        <window.ChartCanvas type="line" data={cmpData} options={{ plugins: { legend: { display: true, position: 'bottom' } }, scales: yPsi }} height={240} />
+      </div>
+    </div>
+  );
+}
+
 /* ---- records view ---- */
 function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy }) {
   return (
@@ -252,6 +309,8 @@ function RecordsView({ entries, mixes, onNew, onEdit, onDelete, onExport, onCopy
             <button className="btn-primary" onClick={onNew}><span>✦ New record</span></button>
           </div>
         </header>
+
+        <DashCharts entries={entries} mixes={mixes} />
 
         {!entries.length ? (
           <div className="rec-empty glass fadeUp">
@@ -383,6 +442,15 @@ function AppStyles() {
     .rec-empty-title{font-size:20px;}
     .rec-empty p{max-width:420px;margin:0;color:var(--ink-dim);font-size:14px;line-height:1.6;}
     .rec-empty .btn-primary{margin-top:6px;}
+    .dash-charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px;}
+    .dash-chart{border-radius:var(--r-lg);padding:16px 18px;border-color:var(--line-strong);}
+    .dash-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;}
+    .dash-chart-head h3{font-size:14px;font-weight:600;margin:0;color:var(--ink);}
+    .dash-sub{font-size:10px;color:var(--ink-faint);}
+    .dash-sel{background:rgba(8,12,28,.6);border:1px solid var(--line-strong);border-radius:8px;
+      color:var(--cyan);font-size:12px;padding:6px 10px;outline:none;cursor:pointer;}
+    .dash-sel option{background:#0e1533;color:var(--ink);}
+    @media (max-width:860px){.dash-charts{grid-template-columns:1fr;}}
     .rec-list{display:flex;flex-direction:column;gap:12px;}
     .rec-card{position:relative;display:grid;
       grid-template-columns:160px 1fr auto auto;gap:18px;align-items:center;
