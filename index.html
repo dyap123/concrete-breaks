@@ -89,6 +89,16 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   background:linear-gradient(120deg,#fff 20%,var(--cyan) 60%,var(--violet));
   -webkit-background-clip:text;background-clip:text;color:transparent;}
 .ms-lead{max-width:560px;margin:14px 0 0;font-size:15px;line-height:1.6;color:var(--ink-dim);}
+/* celebration on logging a record (CPU-cheap: spawned spans, transform-only) */
+.celeb-spark{position:fixed;width:var(--sz,7px);height:var(--sz,7px);border-radius:50%;pointer-events:none;z-index:9999;opacity:0;will-change:transform,opacity;animation-name:sparkOut;animation-fill-mode:forwards;animation-timing-function:cubic-bezier(.16,1,.3,1);}
+.celeb-spark.sq{border-radius:1px;}
+@keyframes sparkOut{0%{transform:rotate(var(--angle)) translateX(0) scale(.4);opacity:0}18%{transform:rotate(var(--angle)) translateX(14px) scale(1.15);opacity:1}70%{opacity:.9}100%{transform:rotate(var(--angle)) translateX(var(--dist)) scale(0) rotate(180deg);opacity:0}}
+.celeb-ring{position:fixed;top:40%;left:50%;width:60px;height:60px;border-radius:50%;border:2px solid var(--cyan);margin:-30px 0 0 -30px;pointer-events:none;z-index:9999;will-change:transform,opacity;animation-name:celebRing;animation-fill-mode:forwards;animation-timing-function:cubic-bezier(.22,1,.36,1);opacity:0;}
+@keyframes celebRing{0%{transform:scale(0);opacity:.9}100%{transform:scale(26);opacity:0}}
+.celeb-word{position:fixed;top:40%;left:50%;font-family:var(--font-d);font-size:clamp(28px,5vw,54px);font-weight:700;letter-spacing:.02em;text-align:center;background:linear-gradient(120deg,var(--cyan),var(--violet),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent;pointer-events:none;z-index:9998;will-change:transform,opacity;animation:celebWord 1.45s cubic-bezier(.16,1,.3,1) forwards;white-space:nowrap;text-shadow:0 0 34px var(--glow-cyan);}
+.celeb-word .sub{display:block;font-family:var(--font-m);font-size:.26em;font-weight:500;letter-spacing:.2em;color:var(--ink-faint);-webkit-text-fill-color:var(--ink-faint);background:none;margin-top:8px;}
+@keyframes celebWord{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}32%{transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-54%) scale(1)}100%{opacity:0;transform:translate(-50%,-66%) scale(.94)}}
+@media (prefers-reduced-motion:reduce){.celeb-spark,.celeb-ring{display:none;}}
 
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
@@ -207,6 +217,28 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
     const j=await r.json();
     return (j.content&&j.content.map(c=>c.text||'').join(''))||j.reply||'';
   }};
+
+  // Celebration burst on logging a record — confirms the log + dopamine hit.
+  const CELEB=['oklch(.82 .15 200)','oklch(.74 .2 330)','oklch(.74 .17 285)','oklch(.8 .16 150)','oklch(.84 .15 75)'];
+  window.celebrate=function(o){
+    o=o||{}; const count=o.count||26, rings=o.rings==null?2:o.rings;
+    const cx=innerWidth/2, cy=innerHeight*0.4;
+    for(let i=0;i<count;i++){
+      const sp=document.createElement('span'); sp.className='celeb-spark'+(Math.random()<.35?' sq':'');
+      const angle=(360/count)*i+(Math.random()-.5)*20, dist=70+Math.random()*120, size=5+Math.random()*8, color=CELEB[i%CELEB.length];
+      sp.style.left=cx+'px'; sp.style.top=cy+'px'; sp.style.setProperty('--angle',angle+'deg');
+      sp.style.setProperty('--dist',dist+'px'); sp.style.setProperty('--sz',size+'px');
+      sp.style.background=color; sp.style.boxShadow='0 0 8px '+color;
+      sp.style.animationDelay=(i*8)+'ms'; sp.style.animationDuration='850ms';
+      document.body.appendChild(sp); sp.addEventListener('animationend',()=>sp.remove(),{once:true}); setTimeout(()=>sp.remove(),1300);
+    }
+    for(let i=0;i<rings;i++){ const r=document.createElement('div'); r.className='celeb-ring';
+      r.style.borderColor=CELEB[i%CELEB.length]; r.style.animationDelay=(i*120)+'ms'; r.style.animationDuration='950ms';
+      document.body.appendChild(r); r.addEventListener('animationend',()=>r.remove(),{once:true}); setTimeout(()=>r.remove(),1450); }
+    if(o.word){ const w=document.createElement('div'); w.className='celeb-word';
+      w.innerHTML=o.word+(o.sub?'<span class="sub">'+o.sub+'</span>':'');
+      document.body.appendChild(w); w.addEventListener('animationend',()=>w.remove(),{once:true}); setTimeout(()=>w.remove(),1650); }
+  };
 })();
 </script>
 

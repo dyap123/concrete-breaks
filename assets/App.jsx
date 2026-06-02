@@ -77,12 +77,15 @@ function App() {
       fb.inc('users/' + currentId + '/points', 1); // atomic — shared leaderboard
       const before = currentUser ? window.rankFor(currentUser.points).title : '';
       const after = currentUser ? window.rankFor((currentUser.points || 0) + 1).title : '';
-      flash(after !== before ? `+1 · ${currentUser.name} promoted to ${after}!` : `+1 point · ${currentUser?.name}`);
+      const promoted = after !== before;
+      const r = window.computeResults(record, mixes.find((m) => m.code === record.mix));
+      if (window.celebrate) window.celebrate(r.met ? { count: 36, rings: 3, word: "MEETS f'c", sub: '+1 point' } : { count: 26, rings: 2, word: promoted ? after.toUpperCase() + '!' : 'LOGGED', sub: '+1 point' });
+      flash(promoted ? `+1 · ${currentUser.name} promoted to ${after}!` : `+1 point · ${currentUser?.name}`);
     } else {
       flash('Record updated · ' + (entry.mix || 'mix'));
     }
     setView('records');
-  }, [flash, currentId, currentUser, entries]);
+  }, [flash, currentId, currentUser, entries, mixes]);
   const addMix = useCbApp((m) => { fb.set('mixDesigns/' + m.code, m); flash('Mix ' + m.code + ' added'); }, [flash]);
   const saveMix = useCbApp((code, patch) => { fb.update('mixDesigns/' + code, patch); flash('Mix ' + code + ' updated'); }, [flash]);
   const deleteMix = useCbApp((code) => { fb.remove('mixDesigns/' + code); flash('Mix ' + code + ' removed'); }, [flash]);
@@ -126,6 +129,18 @@ function App() {
     try { await navigator.clipboard.writeText(tsv); flash('Copied — paste into the matrix sheet'); }
     catch { flash('Copy blocked by browser'); }
   }, [entries, flash, admixtures]);
+
+  /* ---- Alfred can drive the app (navigation directives from chat) ---- */
+  const alfredCommand = useCbApp((c) => {
+    if (c.k === 'go') {
+      const map = { dashboard: 'records', records: 'records', mixes: 'mixes', leaderboard: 'leaderboard', mix: 'mix', log: 'mix', new: 'mix' };
+      const v = map[(c.v || '').toLowerCase()] || c.v;
+      if (['mix', 'records', 'mixes', 'leaderboard'].includes(v)) { setView(v); flash('Alfred → ' + (v === 'records' ? 'Dashboard' : v === 'mix' ? 'New record' : v.charAt(0).toUpperCase() + v.slice(1))); }
+    } else if (c.k === 'log') {
+      const m = mixes.find((x) => x.code.toLowerCase() === (c.v || '').toLowerCase());
+      if (m) { startEntry(m); flash('Alfred opened a record · ' + m.code); }
+    } else if (c.k === 'export') { exportCSV(); }
+  }, [mixes, flash, exportCSV, startEntry]);
 
   /* ---- ⌘K ---- */
   useEffectApp(() => {
@@ -234,7 +249,7 @@ function App() {
         </button>
       )}
 
-      <window.ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} entries={entries} />
+      <window.ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} entries={entries} mixes={mixes} onCommand={alfredCommand} />
       <window.AlfredPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 
       {toast && <div className="toast glass mono">{toast}</div>}
@@ -273,16 +288,23 @@ function DashCharts({ entries, mixes }) {
   const fc = selMix && selMix.fc;
   const single = ages.map((a) => ageAvg(entries, sel, a));
   const gridY = { y: { title: { display: true, text: 'psi', color: '#6b75a8' }, ticks: { callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(120,140,230,.07)' } }, x: { grid: { display: false } } };
+  // headroom so the design f'c reference line is never clipped above the axis
+  const vals = single.filter((v) => v != null);
+  const maxV = Math.max(fc || 0, ...(vals.length ? vals : [0]));
+  const barScales = { ...gridY, y: { ...gridY.y, beginAtZero: true, suggestedMax: maxV ? Math.ceil(maxV * 1.14 / 500) * 500 : undefined } };
   const barData = { labels, datasets: [{ label: 'Avg strength', data: single, backgroundColor: window.strengthBarColor(single, fc), borderRadius: 8, maxBarThickness: 72 }] };
   const barOpts = {
     plugins: { legend: { display: false }, fcLine: { value: fc || 0 },
       tooltip: { callbacks: { label: (c) => ` ${(c.parsed.y || 0).toLocaleString()} psi` + (fc ? `  ·  ${Math.round(c.parsed.y / fc * 100)}% f'c` : '') } } },
-    scales: gridY,
+    scales: barScales,
   };
+  // distinct colour per mix (by position) so two same-strength mixes never share a colour
+  const CMP_PALETTE = ['oklch(.82 .15 200)', 'oklch(.74 .2 330)', 'oklch(.74 .17 285)', 'oklch(.8 .16 150)', 'oklch(.84 .15 75)', 'oklch(.72 .16 255)', 'oklch(.78 .19 350)', 'oklch(.82 .13 180)'];
+  const colorFor = (code) => CMP_PALETTE[Math.max(0, mixes.findIndex((m) => m.code === code)) % CMP_PALETTE.length];
   const toggle = (code) => setCmp((p) => p.includes(code) ? (p.length > 1 ? p.filter((c) => c !== code) : p) : [...p, code]);
   const cmpData = {
     labels,
-    datasets: cmp.map((code) => { const m = mixes.find((x) => x.code === code); const col = window.mixColor(m);
+    datasets: cmp.map((code) => { const col = colorFor(code);
       return { label: code, data: ages.map((a) => ageAvg(entries, code, a)), borderColor: col, backgroundColor: col, tension: 0.35, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, fill: false }; }),
   };
   const cmpOpts = {
@@ -308,9 +330,10 @@ function DashCharts({ entries, mixes }) {
           <span className="dash-sub mono">avg strength by age</span>
         </div>
         <div className="cmp-chips">
-          {logged.map((code) => { const m = mixes.find((x) => x.code === code); const on = cmp.includes(code);
+          <span className="cmp-label mono">compare:</span>
+          {logged.map((code) => { const on = cmp.includes(code);
             return (
-              <button key={code} className={'cmp-chip' + (on ? ' on' : '')} style={{ '--c': window.mixColor(m) }} onClick={() => toggle(code)}>
+              <button key={code} className={'cmp-chip' + (on ? ' on' : '')} style={{ '--c': colorFor(code) }} onClick={() => toggle(code)}>
                 <span className="cmp-dot"></span>{code}
               </button>
             ); })}
@@ -589,7 +612,8 @@ function AppStyles() {
     .dash-legend .ok::before{background:oklch(.78 .15 155);}
     .dash-legend .mid::before{background:oklch(.82 .14 70);}
     .dash-legend .low::before{background:oklch(.68 .19 18);}
-    .cmp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+    .cmp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+    .cmp-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px;}
     .cmp-chip{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink-faint);
       padding:7px 13px;border-radius:99px;background:rgba(8,12,28,.4);border:1px solid var(--line);
       font-family:var(--font-m);transition:.14s;}
