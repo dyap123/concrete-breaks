@@ -144,6 +144,27 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .tbl .act{display:flex;gap:6px}
 .iconbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--card2);border:1px solid var(--card-border);color:var(--text-muted)}
 .iconbtn:hover{color:var(--text);border-color:var(--card-hover)}
+.iconbtn.danger:hover{color:var(--red);border-color:var(--red)}
+/* table polish */
+.tblwrap{border:1px solid var(--card-border);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
+.tblwrap .scroll{overflow-x:auto}
+.tbl thead th{position:sticky;top:0;background:var(--bg2);z-index:1}
+.tbl tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015)}
+.tbl td.num,.tbl th.num{text-align:right;font-family:var(--font-mono)}
+.tbl td.ctr,.tbl th.ctr{text-align:center}
+.tbl .act{display:flex;gap:6px;justify-content:flex-end}
+.tbl-foot{padding:9px 12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center}
+.goat{margin-left:5px}
+/* filter bar */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters .inp{width:auto;flex:1;min-width:160px}
+.filters .inp.date{flex:none;min-width:150px}
+.filters .inp.sel{flex:none;min-width:120px}
+.mine-tog{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text-body);padding:9px 13px;border-radius:12px;background:var(--card);border:1px solid var(--card-border);cursor:pointer;white-space:nowrap}
+.mine-tog input{accent-color:var(--green);width:16px;height:16px}
+.searchbar{position:relative;margin-bottom:12px}
+.searchbar .ms{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:18px;pointer-events:none}
+.searchbar .inp{padding-left:38px}
 
 /* ── Leaderboard ── */
 .podium{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;align-items:end;margin-bottom:18px}
@@ -260,6 +281,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 <!-- Tabs -->
 <div class="tabs" id="tabs">
   <button class="tab on" data-tab="log"><span class="ms">add_circle</span>Log</button>
+  <button class="tab" data-tab="entries"><span class="ms">history</span>My Logs</button>
   <button class="tab" data-tab="dash"><span class="ms">monitoring</span>Dashboard</button>
   <button class="tab" data-tab="board"><span class="ms">trophy</span>Leaderboard</button>
   <button class="tab" data-tab="export"><span class="ms">download</span>Export</button>
@@ -285,6 +307,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="card hidden" id="stepPour">
       <h2><span class="ms">water_drop</span>Select or add pour <span id="pourMixTag" class="pill muted" style="margin-left:auto"></span></h2>
       <div id="autoChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div class="searchbar"><span class="ms">search</span><input class="inp" id="pourSearch" placeholder="Search pours by #, location, or date…" oninput="renderPourSelGrid()"></div>
       <div class="selgrid" id="pourSelGrid"></div>
       <!-- New pour form -->
       <div id="newPourForm" class="hidden" style="margin-top:14px;border-top:1px solid var(--card-border);padding-top:14px">
@@ -341,6 +364,20 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <div class="chartcard"><div class="chd"><h3>Slump: target vs actual</h3><button class="btn sm" onclick="exportChart('chSlump','slump')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chSlump"></canvas></div></div>
       <div class="chartcard"><div class="chd"><h3>28-day pass / fail</h3><button class="btn sm" onclick="exportChart('chPass','pass-fail')"><span class="ms">image</span>Export</button></div><div class="chartwrap"><canvas id="chPass"></canvas></div></div>
     </div>
+  </div>
+
+  <!-- MY LOGS / ENTRIES -->
+  <div class="panel hidden" id="panel-entries">
+    <div class="h1"><span class="accent">My Logs</span></div>
+    <div class="sub1">Search, review, and edit logged break sets.</div>
+    <div class="filters">
+      <div class="searchbar" style="flex:1;min-width:200px;margin:0"><span class="ms">search</span><input class="inp" id="enSearch" placeholder="Mix, pour, location, person…" oninput="renderEntries()"></div>
+      <input class="inp date" type="date" id="enDate" onchange="renderEntries()" title="Filter by test date">
+      <select class="inp sel" id="enAge" onchange="renderEntries()"><option value="all">All ages</option><option value="7">7-day</option><option value="28">28-day</option><option value="56">56-day</option><option value="90">90-day</option></select>
+      <label class="mine-tog"><input type="checkbox" id="enMine" checked onchange="renderEntries()">Only mine</label>
+      <button class="btn sm ghost" onclick="clearEntryFilters()"><span class="ms">close</span>Clear</button>
+    </div>
+    <div class="tblwrap"><div class="scroll"><table class="tbl" id="entriesTbl"></table></div><div class="tbl-foot" id="entriesFoot"></div></div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -415,6 +452,31 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
   </div>
 </div>
 
+<!-- Break edit modal -->
+<div class="overlay hidden" id="breakModal" style="background:rgba(6,9,14,0.85)">
+  <div class="card" style="max-width:420px;width:100%">
+    <h2><span class="ms">edit</span>Edit break set</h2>
+    <input type="hidden" id="eb-id">
+    <div class="autochip green" id="eb-ctx" style="margin-bottom:14px"></div>
+    <div class="grid2">
+      <div class="field"><label>Test age (days)</label><select class="inp" id="eb-age" onchange="liveEdit()"><option value="7">7-day</option><option value="28">28-day</option><option value="56">56-day</option><option value="90">90-day</option></select></div>
+      <div class="field"><label>Test date</label><input class="inp" type="date" id="eb-date"></div>
+    </div>
+    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin:6px 0 12px">Cylinder strengths (psi)</label>
+    <div class="cyls">
+      <div class="cyl"><label>CYL 1</label><input class="inp" type="number" id="eb-c1" inputmode="numeric" oninput="liveEdit()"></div>
+      <div class="cyl"><label>CYL 2</label><input class="inp" type="number" id="eb-c2" inputmode="numeric" oninput="liveEdit()"></div>
+      <div class="cyl"><label>CYL 3</label><input class="inp" type="number" id="eb-c3" inputmode="numeric" oninput="liveEdit()"></div>
+    </div>
+    <div class="live-readout"><div><div class="lbl">Average</div><div class="big" id="eb-avg">—</div></div><div style="text-align:right"><div class="lbl">% of f'c</div><div class="big" id="eb-pct">—</div></div><div id="eb-status"></div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="saveBreakEdit()"><span class="ms">save</span>Save</button>
+      <button class="btn ghost" onclick="closeBreakModal()">Cancel</button>
+      <button class="btn ghost" style="margin-left:auto;color:var(--red)" onclick="deleteBreakFromModal()"><span class="ms">delete</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- Dino sidebar -->
 <button class="sidetoggle left" id="dinoToggle" onclick="toggleDino()" title="Dino break"><span class="ms">videogame_asset</span></button>
 <div class="sidepanel left" id="dinoPanel">
@@ -484,11 +546,19 @@ async function ensureSeed(){
     await fbSet('mixes',obj);
   }
 }
+// Seed Danzel (manager + goat) if no interns exist yet.
+async function ensureSeedInterns(){
+  const i=await fbGet('interns');
+  if(!i||!Object.keys(i).length){
+    await fbSet('interns',{[uid()]:{name:'Danzel',active:true,role:'manager',goat:true,order:0}});
+  }
+}
 
 /* ═══════════════ Boot ═══════════════ */
 async function boot(){
   if(!initFirebase()){toast('Firebase failed to load','error');return}
   await ensureSeed();
+  await ensureSeedInterns();
   fbListen('interns',v=>{state.interns=v||{};renderNamePicker();renderRoster()});
   fbListen('mixes',v=>{state.mixes=v||{};onDataChange()});
   fbListen('pours',v=>{state.pours=v||{};onDataChange()});
@@ -499,6 +569,7 @@ async function boot(){
 function onDataChange(){
   populateMixSelects();renderMixSelGrid();renderMixTbl();renderDash();renderLogTiles();
   if(state.sel.mixId)renderPourSelGrid();
+  if($('#panel-entries')&&!$('#panel-entries').classList.contains('hidden'))renderEntries();
 }
 
 /* ═══════════════ Name picker ═══════════════ */
@@ -519,6 +590,7 @@ $$('.tab').forEach(t=>t.onclick=()=>{
   $('#panel-'+t.dataset.tab).classList.remove('hidden');
   if(t.dataset.tab==='dash')renderDash();
   if(t.dataset.tab==='board')renderBoard();
+  if(t.dataset.tab==='entries')renderEntries();
 });
 
 /* ═══════════════ Mix selects + grid ═══════════════ */
@@ -547,7 +619,9 @@ function selectMix(id){
 }
 function poursForMix(mixId){return Object.entries(state.pours).filter(([,p])=>p.mixId===mixId).sort((a,b)=>(b[1].pourDate||'').localeCompare(a[1].pourDate||''))}
 function renderPourSelGrid(){
-  const g=$('#pourSelGrid');const list=poursForMix(state.sel.mixId);
+  const g=$('#pourSelGrid');let list=poursForMix(state.sel.mixId);
+  const q=($('#pourSearch')?.value||'').trim().toLowerCase();
+  if(q)list=list.filter(([,p])=>[(p.pourNo||''),(p.location||''),(p.element||''),(p.pourDate||'')].join(' ').toLowerCase().includes(q));
   g.innerHTML=list.map(([id,p])=>{
     const nb=Object.values(state.breaks).filter(b=>b.pourId===id).length;
     return `<button class="selcard ${state.sel.pourId===id?'on':''}" onclick="selectPour('${id}')"><div class="mono">${esc(p.pourNo||'Pour')}</div><div class="meta">${esc(p.pourDate||'')}${p.location?' · '+esc(p.location):''}<br>${nb} break set${nb===1?'':'s'} · slump ${p.slumpActual??'—'}"</div></button>`;
@@ -638,6 +712,8 @@ async function bumpScore(pts){
     const wk=weekKey();cur.week=cur.week||{};cur.week[wk]=(cur.week[wk]||0)+pts;return cur});
 }
 function weekKey(){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
+function isGoat(id){return id&&state.interns[id]&&state.interns[id].goat}
+function goatTag(id){return isGoat(id)?'<span class="goat" title="The GOAT">🐐</span>':''}
 let boardRange='all';
 $('#boardSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;boardRange=b.dataset.range;$$('#boardSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderBoard()});
 function renderBoard(){
@@ -649,8 +725,8 @@ function renderBoard(){
   if(!rows.length){pod.innerHTML='';$('#boardList').innerHTML='<div class="empty"><span class="ms">trophy</span><p>No data logged yet. Be the first!</p></div>';return}
   const order=[1,0,2];const cls=['second','first','third'];const medal=['🥈','🥇','🥉'];
   pod.innerHTML=order.map((idx,i)=>{const r=top3[idx];if(!r)return '<div></div>';
-    return `<div class="pod ${cls[i]}"><div class="medal">${medal[i]}</div><div class="nm">${esc(r.name)}</div><div class="sc ${cls[i]==='first'?'gold':''}">${r.points}</div><div class="un">pts</div></div>`}).join('');
-  $('#boardList').innerHTML=rows.map((r,i)=>`<div class="lbrow ${r.id===state.intern?.id?'me':''}"><div class="rank">${i+1}</div><div class="nm">${esc(r.name)}</div><div class="logs">${r.logs} logs</div><div class="pts">${r.points} pts</div></div>`).join('');
+    return `<div class="pod ${cls[i]}"><div class="medal">${medal[i]}</div><div class="nm">${esc(r.name)}${goatTag(r.id)}</div><div class="sc ${cls[i]==='first'?'gold':''}">${r.points}</div><div class="un">pts</div></div>`}).join('');
+  $('#boardList').innerHTML=rows.map((r,i)=>`<div class="lbrow ${r.id===state.intern?.id?'me':''}"><div class="rank">${i+1}</div><div class="nm">${esc(r.name)}${goatTag(r.id)}</div><div class="logs">${r.logs} logs</div><div class="pts">${r.points} pts</div></div>`).join('');
 }
 
 /* ═══════════════ Log tiles ═══════════════ */
@@ -669,6 +745,57 @@ function renderLogTiles(){
     <div class="tile amber"><span class="ms">check_circle</span><div><div class="v">${passRate}%</div><div class="l">28-day pass</div></div></div>
     <div class="tile purple"><span class="ms">military_tech</span><div><div class="v">${myPts}</div><div class="l">Your points</div></div></div>`;
 }
+
+/* ═══════════════ My Logs / Entries (search + edit) ═══════════════ */
+function breakResult(b){const m=state.mixes[b.mixId];const fc=m&&m.designStrength;if(!fc)return {cls:'muted',txt:'—',pct:''};const pct=Math.round(b.avg/fc*100);if(b.avg>=fc)return{cls:'pass',txt:'PASS',pct};if(b.avg>=fc*0.9)return{cls:'warn',txt:'WITHIN 10%',pct};return{cls:'fail',txt:'FAIL',pct}}
+function clearEntryFilters(){$('#enSearch').value='';$('#enDate').value='';$('#enAge').value='all';$('#enMine').checked=true;renderEntries()}
+function renderEntries(){
+  const t=$('#entriesTbl');if(!t)return;
+  const q=$('#enSearch').value.trim().toLowerCase();
+  const date=$('#enDate').value;const age=$('#enAge').value;const mine=$('#enMine').checked;
+  let rows=Object.entries(state.breaks).map(([id,b])=>({id,...b}));
+  if(mine&&state.intern)rows=rows.filter(b=>b.loggedBy===state.intern.id);
+  if(age!=='all')rows=rows.filter(b=>String(b.testAge)===age);
+  if(date)rows=rows.filter(b=>{const p=state.pours[b.pourId];return b.testDate===date||(p&&p.pourDate===date)});
+  if(q)rows=rows.filter(b=>{const m=state.mixes[b.mixId],p=state.pours[b.pourId];return [(m?.mixNo||''),(p?.pourNo||''),(p?.location||''),(b.loggedByName||'')].join(' ').toLowerCase().includes(q)});
+  rows.sort((a,b)=>(b.loggedAt||0)-(a.loggedAt||0));
+  t.innerHTML=`<thead><tr><th>Logged</th><th>Mix</th><th>Pour</th><th class="ctr">Age</th><th class="num">Cyl 1</th><th class="num">Cyl 2</th><th class="num">Cyl 3</th><th class="num">Avg</th><th class="ctr">Result</th><th>By</th><th></th></tr></thead><tbody>${
+    rows.map(b=>{const m=state.mixes[b.mixId]||{},p=state.pours[b.pourId]||{},r=breakResult(b);
+      const canEdit=!state.intern||b.loggedBy===state.intern.id||isGoat(state.intern.id);
+      return `<tr><td>${b.testDate||new Date(b.loggedAt).toISOString().slice(0,10)}</td><td class="mono">${esc(m.mixNo||'?')}</td><td>${esc(p.pourNo||'—')}</td><td class="ctr">${b.testAge}d</td><td class="num">${b.cyl1??'—'}</td><td class="num">${b.cyl2??'—'}</td><td class="num">${b.cyl3??'—'}</td><td class="num" style="font-weight:700">${Math.round(b.avg).toLocaleString()}</td><td class="ctr"><span class="pill ${r.cls}">${r.txt}${r.pct!==''?' '+r.pct+'%':''}</span></td><td>${esc(b.loggedByName||'')}${goatTag(b.loggedBy)}</td><td><div class="act">${canEdit?`<button class="iconbtn" onclick="editBreak('${b.id}')"><span class="ms">edit</span></button><button class="iconbtn danger" onclick="deleteBreak('${b.id}')"><span class="ms">delete</span></button>`:''}</div></td></tr>`;
+    }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:30px">No matching entries.</td></tr>'
+  }</tbody>`;
+  $('#entriesFoot').innerHTML=`<span>${rows.length} entr${rows.length===1?'y':'ies'}</span><span>${mine?'Your logs':'All logs'}</span>`;
+}
+/* edit modal */
+function editBreak(id){
+  const b=state.breaks[id];if(!b)return;const m=state.mixes[b.mixId]||{},p=state.pours[b.pourId]||{};
+  $('#breakModal').classList.remove('hidden');
+  $('#eb-id').value=id;$('#eb-ctx').innerHTML=`<span class="ms">science</span>${esc(m.mixNo||'?')} · ${esc(p.pourNo||'pour')}`;
+  $('#eb-age').value=b.testAge;$('#eb-date').value=b.testDate||'';
+  $('#eb-c1').value=b.cyl1??'';$('#eb-c2').value=b.cyl2??'';$('#eb-c3').value=b.cyl3??'';
+  liveEdit();
+}
+function closeBreakModal(){$('#breakModal').classList.add('hidden')}
+function editCyls(){return [$('#eb-c1').value,$('#eb-c2').value,$('#eb-c3').value].map(v=>v===''?null:parseFloat(v))}
+function liveEdit(){
+  const b=state.breaks[$('#eb-id').value];const m=b&&state.mixes[b.mixId];const avg=avgOf(editCyls());
+  $('#eb-avg').textContent=avg==null?'—':Math.round(avg).toLocaleString();
+  const fc=m&&m.designStrength;
+  if(avg==null||!fc){$('#eb-pct').textContent='—';$('#eb-status').innerHTML='';return}
+  const pct=avg/fc*100;$('#eb-pct').textContent=Math.round(pct)+'%';
+  let cls='fail',txt="Below f'c";if(avg>=fc){cls='pass';txt="Meets f'c"}else if(pct>=90){cls='warn';txt='Within 10%'}
+  $('#eb-status').innerHTML=`<span class="pill ${cls}">${txt}</span>`;
+  $('#eb-pct').style.color=cls==='pass'?'var(--green)':cls==='warn'?'var(--amber)':'var(--red)';
+}
+async function saveBreakEdit(){
+  const id=$('#eb-id').value;const b=state.breaks[id];if(!b)return;
+  const cyls=editCyls();const avg=avgOf(cyls);if(avg==null){toast('Enter at least one cylinder','error');return}
+  await fbUpdate(`breaks/${id}`,{testAge:+$('#eb-age').value,testDate:$('#eb-date').value||b.testDate,cyl1:cyls[0],cyl2:cyls[1],cyl3:cyls[2],avg:Math.round(avg*10)/10,editedBy:state.intern?.name,editedAt:Date.now()});
+  closeBreakModal();toast('Entry updated','success');
+}
+async function deleteBreakFromModal(){const id=$('#eb-id').value;closeBreakModal();await deleteBreak(id)}
+async function deleteBreak(id){if(!confirm('Delete this break set? This cannot be undone.'))return;await fbRemove(`breaks/${id}`);toast('Entry deleted','success')}
 
 /* ═══════════════ Celebration (lifted from openyap-todo) ═══════════════ */
 const CELEB_CFG={pass:{count:10,rings:1,dist:[48,90],size:[5,9],duration:750},epic:{count:20,rings:2,dist:[70,130],size:[7,12],duration:950},super_epic:{count:32,rings:3,dist:[90,180],size:[8,14],duration:1100}};
@@ -816,8 +943,8 @@ async function exportPdf(){
 /* ═══════════════ Mix admin ═══════════════ */
 function renderMixTbl(){
   const t=$('#mixTbl');if(!t)return;
-  t.innerHTML=`<thead><tr><th>Mix #</th><th>Design f'c</th><th>Age</th><th>Slump</th><th>Agg</th><th>W/C</th><th>Use</th><th></th></tr></thead><tbody>${
-    mixList().map(([id,m])=>`<tr><td class="mono" style="font-weight:700">${esc(m.mixNo)}</td><td>${m.designStrength?m.designStrength+' psi':'<span class="pill muted">slurry</span>'}</td><td>${m.designAge||28}d</td><td>${m.slumpTarget??'—'}" ±${m.slumpTol??1}</td><td>${esc(m.aggSize||'')}</td><td>${m.wcRatio??'—'}</td><td>${esc(m.use||'')}</td><td><div class="act"><button class="iconbtn" onclick="openMixEditor('${id}')"><span class="ms">edit</span></button></div></td></tr>`).join('')
+  t.innerHTML=`<thead><tr><th>Mix #</th><th class="num">Design f'c</th><th class="ctr">Age</th><th>Slump</th><th>Agg</th><th class="num">W/C</th><th>Use</th><th></th></tr></thead><tbody>${
+    mixList().map(([id,m])=>`<tr><td class="mono" style="font-weight:700">${esc(m.mixNo)}</td><td class="num">${m.designStrength?m.designStrength.toLocaleString()+' psi':'<span class="pill muted">slurry</span>'}</td><td class="ctr">${m.designAge||28}d</td><td>${m.slumpTarget??'—'}" ±${m.slumpTol??1}</td><td>${esc(m.aggSize||'')}</td><td class="num">${m.wcRatio??'—'}</td><td>${esc(m.use||'')}</td><td><div class="act"><button class="iconbtn" onclick="openMixEditor('${id}')"><span class="ms">edit</span></button></div></td></tr>`).join('')
   }</tbody>`;
 }
 function openMixEditor(id){
@@ -845,18 +972,19 @@ async function deleteMix(){const id=$('#mx-id').value;if(!id)return;if(!confirm(
 function renderRoster(){
   const t=$('#rosterTbl');if(!t)return;
   const list=Object.entries(state.interns).sort((a,b)=>(a[1].order??99)-(b[1].order??99));
-  t.innerHTML=`<thead><tr><th>Name</th><th>Status</th><th>Points</th><th></th></tr></thead><tbody>${
-    list.map(([id,i])=>{const sc=state.scores[id];return `<tr><td style="font-weight:700"><span style="display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:${avatarColor(i.name)};color:#04110b;font-size:11px;font-weight:800;margin-right:8px">${esc(initials(i.name))}</span>${esc(i.name)}</td><td>${i.active===false?'<span class="pill muted">inactive</span>':'<span class="pill pass">active</span>'}</td><td class="mono">${sc?sc.points:0}</td><td><div class="act"><button class="iconbtn" onclick="toggleIntern('${id}')" title="toggle active"><span class="ms">${i.active===false?'visibility':'visibility_off'}</span></button><button class="iconbtn" onclick="delIntern('${id}')"><span class="ms">delete</span></button></div></td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No interns yet</td></tr>'
+  t.innerHTML=`<thead><tr><th>Name</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>${
+    list.map(([id,i])=>{const sc=state.scores[id];return `<tr><td style="font-weight:700"><span style="display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:${avatarColor(i.name)};color:#04110b;font-size:11px;font-weight:800;margin-right:8px;vertical-align:middle">${esc(initials(i.name))}</span>${esc(i.name)}${goatTag(id)}${i.role==='manager'?' <span class="pill blue" style="background:rgba(74,142,255,0.15);color:var(--blue)">manager</span>':''}</td><td>${i.active===false?'<span class="pill muted">inactive</span>':'<span class="pill pass">active</span>'}</td><td class="num">${sc?sc.points:0}</td><td><div class="act"><button class="iconbtn" onclick="toggleGoat('${id}')" title="toggle GOAT">🐐</button><button class="iconbtn" onclick="toggleIntern('${id}')" title="toggle active"><span class="ms">${i.active===false?'visibility':'visibility_off'}</span></button><button class="iconbtn danger" onclick="delIntern('${id}')"><span class="ms">delete</span></button></div></td></tr>`}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No interns yet</td></tr>'
   }</tbody>`;
 }
 async function addIntern(){const n=$('#newInternName').value.trim();if(!n){toast('Enter a name','error');return}await fbSet(`interns/${uid()}`,{name:n,active:true,order:Object.keys(state.interns).length});$('#newInternName').value='';toast('Intern added','success')}
 async function toggleIntern(id){const i=state.interns[id];await fbUpdate(`interns/${id}`,{active:i.active===false})}
+async function toggleGoat(id){const i=state.interns[id];await fbUpdate(`interns/${id}`,{goat:!i.goat})}
 async function delIntern(id){if(!confirm('Remove this intern?'))return;await fbRemove(`interns/${id}`)}
 
 /* ═══════════════ Dino game (replaces blackjack) ═══════════════ */
 const dino={raf:null,running:false,over:false,score:0,hi:+(localStorage.getItem('cb_dino_hi')||0),
-  y:0,vy:0,duck:false,speed:3,obs:[],t:0,ground:130,dy:0};
-function dinoReset(){dino.score=0;dino.speed=3;dino.obs=[];dino.t=0;dino.y=0;dino.vy=0;dino.duck=false;dino.over=false;$('#dinoScore').textContent='0'}
+  y:0,vy:0,duck:false,speed:1.9,obs:[],t:0,ground:130,dy:0};
+function dinoReset(){dino.score=0;dino.speed=1.9;dino.obs=[];dino.t=0;dino.y=0;dino.vy=0;dino.duck=false;dino.over=false;$('#dinoScore').textContent='0'}
 function toggleDino(){const p=$('#dinoPanel');const open=p.classList.toggle('open');
   if(open){$('#dinoHi').textContent=dino.hi;dinoDraw();}else{dinoStop()}}
 function dinoAction(){
@@ -867,13 +995,13 @@ function dinoJump(){if(dino.y===0&&!dino.over){dino.vy=-9.5}}
 function dinoStop(){if(dino.raf)cancelAnimationFrame(dino.raf);dino.raf=null;dino.running=false}
 function dinoLoop(){
   const c=$('#dinoCanvas');const x=c.getContext('2d');const W=c.width,H=c.height,G=dino.ground;
-  dino.t++;dino.score+=1;if(dino.score%6===0)$('#dinoScore').textContent=Math.floor(dino.score/6);
-  dino.speed+=0.0015;
+  dino.t++;dino.score+=1;if(dino.score%9===0)$('#dinoScore').textContent=Math.floor(dino.score/9);
+  dino.speed+=0.0006;
   // physics
-  dino.vy+=0.55;dino.y+=dino.vy;if(dino.y>0){dino.y=0;dino.vy=0}
-  // spawn
-  if(dino.t%Math.max(48,90-Math.floor(dino.speed*6))===0){const fly=Math.random()<0.25;dino.obs.push({x:W+10,w:fly?20:14,h:fly?14:24+Math.random()*14,fly})}
-  dino.obs.forEach(o=>o.x-=dino.speed*1.6);dino.obs=dino.obs.filter(o=>o.x>-30);
+  dino.vy+=0.5;dino.y+=dino.vy;if(dino.y>0){dino.y=0;dino.vy=0}
+  // spawn (less frequent, scales gently with speed)
+  if(dino.t%Math.max(78,128-Math.floor(dino.speed*6))===0){const fly=Math.random()<0.22;dino.obs.push({x:W+10,w:fly?20:14,h:fly?14:24+Math.random()*14,fly})}
+  dino.obs.forEach(o=>o.x-=dino.speed*1.2);dino.obs=dino.obs.filter(o=>o.x>-30);
   // draw
   x.clearRect(0,0,W,H);
   x.strokeStyle='rgba(255,255,255,0.18)';x.beginPath();x.moveTo(0,G+1);x.lineTo(W,G+1);x.stroke();
@@ -901,12 +1029,15 @@ window.addEventListener('keyup',e=>{if(e.code==='ArrowDown')dino.duck=false});
 
 /* ═══════════════ Alfred (MiniMax, client-side) ═══════════════ */
 const ALF_URL='https://api.minimax.io/anthropic/v1/messages';
-const ALF_MODEL='MiniMax-M2.5';
+const ALF_MODEL='MiniMax-M2.7';
+// Root (un-namespaced) reads — the MiniMax key is shared at root config/ with the CUP dashboard.
+function fbGetRoot(p){return db.ref(p).once('value').then(s=>s.val())}
+function fbSetRoot(p,d){return db.ref(p).set(d)}
 async function getAlfKey(){
   if(state.alfKey)return state.alfKey;
-  let k=await fbGet('config/minimax_key').catch(()=>null);
-  if(!k)k=localStorage.getItem('cb_minimax_key');
-  if(!k){k=prompt('Enter MiniMax API key (stored locally):');if(k){localStorage.setItem('cb_minimax_key',k)}}
+  let k=await fbGetRoot('config/minimax_key').catch(()=>null);   // shared with CUP / other apps
+  if(!k)k=localStorage.getItem('cup_alfred_key')||localStorage.getItem('cb_minimax_key');
+  if(!k){k=prompt('Enter MiniMax API key (saved for all apps):');if(k){localStorage.setItem('cb_minimax_key',k);fbSetRoot('config/minimax_key',k).catch(()=>{})}}
   state.alfKey=k;return k;
 }
 function toggleAlf(){const p=$('#alfPanel');const open=p.classList.toggle('open');
