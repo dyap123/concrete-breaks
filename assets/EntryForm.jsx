@@ -180,7 +180,7 @@ function Readout({ entry, mix, res }) {
       <style>{`
         .ro{position:sticky;top:0;}
         .ro-card{border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:16px;
-          border-color:var(--line-strong);box-shadow:0 0 50px -30px var(--glow-cyan);}
+          border-color:var(--line-strong);box-shadow:var(--shadow);}
         .ro-mixline{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
           padding-bottom:14px;border-bottom:1px solid var(--line);}
         .ro-code{font-size:20px;color:var(--ink);text-shadow:0 0 20px oklch(.8 .14 var(--h)/.5);}
@@ -484,7 +484,7 @@ function FormStyles() {
     .df-val{font-size:12.5px;}
     .df-backdrop{position:fixed;inset:0;z-index:60;}
     .df-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:61;width:238px;border-radius:var(--r-md);
-      padding:12px;border-color:var(--line-strong);box-shadow:var(--shadow),0 0 40px -20px var(--glow-cyan);animation:popIn .16s both;}
+      padding:12px;border-color:var(--line-strong);box-shadow:var(--shadow);animation:popIn .16s both;}
     .df-pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
     .df-month{font-size:13px;color:var(--ink);}
     .df-nav{width:26px;height:26px;border-radius:7px;background:rgba(8,12,28,.5);border:1px solid var(--line);
@@ -529,8 +529,8 @@ function FormStyles() {
     .btn-ghost:hover{color:var(--ink);border-color:var(--line-strong);}
     .btn-primary{display:flex;align-items:center;gap:10px;padding:11px 22px;border-radius:11px;border:none;
       font-size:13px;font-weight:600;color:#06122a;background:linear-gradient(135deg,var(--cyan),var(--violet));
-      box-shadow:0 0 26px -8px var(--glow-cyan);transition:transform .12s,box-shadow .2s;}
-    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 0 34px -6px var(--glow-cyan);}
+      transition:transform .12s,filter .15s;}
+    .btn-primary:hover{transform:translateY(-1px);filter:brightness(1.08);}
     .btn-primary .mono{font-size:11px;opacity:.7;}
     @media (max-width:980px){.ef-cols{grid-template-columns:1fr;}.ef-side{order:-1;}.ro{position:relative;}
       .grid3{grid-template-columns:1fr 1fr;}.grid4{grid-template-columns:1fr 1fr;}}

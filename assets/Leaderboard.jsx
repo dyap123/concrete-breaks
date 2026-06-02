@@ -146,8 +146,7 @@ function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember,
         .lb-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:26px;}
         .lb-lead{margin:10px 0 0;font-size:14px;color:var(--ink-dim);}
         .lb-mgr{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:var(--r-lg);
-          margin-bottom:28px;border-color:oklch(.8 .14 60/.3);
-          box-shadow:0 0 50px -30px oklch(.8 .14 60/.6);}
+          margin-bottom:28px;border-color:oklch(.8 .14 60/.4);}
         .lb-mgr-info{flex:1;}
         .lb-mgr-name{font-size:19px;}
         .lb-mgr-role{font-size:10.5px;color:var(--amber);letter-spacing:.1em;margin-top:4px;}
@@ -162,7 +161,7 @@ function Leaderboard({ users, entries, currentId, onLog, isManager, onAddMember,
           border-radius:var(--r-lg) var(--r-lg) 0 0;background:linear-gradient(180deg,rgba(20,28,62,.55),rgba(11,16,40,.3));
           border:1px solid var(--line);border-bottom:none;animation:fadeUp .5s both;}
         .pod-slot.empty{background:none;border:none;}
-        .pod-slot.p1{box-shadow:0 0 50px -24px var(--glow-cyan);border-color:var(--line-strong);}
+        .pod-slot.p1{border-color:var(--cyan);}
         .pod-slot.me{outline:1px solid var(--cyan);outline-offset:-1px;}
         .pod-medal{font-size:18px;color:var(--ink-dim);}
         .pod-slot.p1 .pod-medal{color:var(--amber);}

@@ -212,6 +212,25 @@ system RAM), three effects dominate the cost, and OpenBreak's **Lite mode** targ
 - **Continuous `requestAnimationFrame` loops.** The starfield repaints a full-screen canvas 60×/sec
   forever. Lite draws **one static frame and cancels the loop** — zero ongoing cost.
 
+### What "glow" actually costs (and the cheap substitute)
+A neon **glow** can be drawn two ways, and they are *not* equal in cost:
+
+- **The expensive way — blur.** `box-shadow: 0 0 60px …`, `filter: blur(14px)`, or canvas
+  `ctx.shadowBlur`. Every one of these makes the engine **sample many pixels per output pixel**,
+  and large radii are paid on every repaint (hover, scroll, chart redraw). The chart's `shadowBlur`
+  glow and the big card glows were the GPU-intense parts.
+- **The cheap way — a gradient.** A `linear-gradient`/`radial-gradient` fill is computed **once**
+  and just *displayed*; there's no per-pixel sampling. It reads as depth/glow but costs almost
+  nothing.
+
+So the fix mirrored the **to-do app's completion animation** — which is fast precisely because it
+uses *only* transforms, opacity and flat colors, never a blur. We **deleted the glows** (the chart
+shadowBlur plugin, the 40–60px shadow halos, the blurred mix-card div) and let the **gradient bar
+fills and area fills** carry the look. Same vibrant feel, a fraction of the cost — and it's the
+default now, not gated behind a toggle.
+
+> Glow ≠ blur. You can fake a glow with a gradient (free) instead of a blur (per-pixel, per-frame).
+
 Principles at work:
 - **Know the cost model.** Performance optimization isn't "make everything faster"; it's *finding
   the few operations that dominate* and removing those. 90% of the lag came from 3 effects.

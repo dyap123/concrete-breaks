@@ -180,9 +180,8 @@ function DinoGame({ compact }) {
         .dino-msg{font-size:14px;letter-spacing:.18em;color:var(--ink);}
         .dino-btn{background:linear-gradient(180deg,oklch(.8 .13 205/.22),oklch(.8 .13 205/.08));
           border:1px solid var(--line-strong);color:var(--ink);border-radius:99px;
-          padding:6px 16px;font-size:12px;font-weight:600;letter-spacing:.02em;
-          box-shadow:0 0 18px -6px var(--glow-cyan);transition:transform .12s,box-shadow .2s;}
-        .dino-btn:hover{transform:translateY(-1px);box-shadow:0 0 24px -4px var(--glow-cyan);}
+          padding:6px 16px;font-size:12px;font-weight:600;letter-spacing:.02em;transition:transform .12s,filter .15s;}
+        .dino-btn:hover{transform:translateY(-1px);filter:brightness(1.1);}
         .dino-hint{font-size:9px;color:var(--ink-faint);letter-spacing:.06em;}
       `}</style>
     </div>

@@ -29,12 +29,11 @@ function MixCard({ mix, onPick, count }) {
           background:linear-gradient(160deg,rgba(20,28,62,.66),rgba(11,16,40,.6));
           border:1px solid var(--line);overflow:hidden;transition:transform .18s,border-color .2s,box-shadow .25s;
           min-height:172px;display:flex;flex-direction:column;}
-        .mix-card:hover{transform:translateY(-3px);border-color:oklch(.8 .14 var(--h)/.5);
-          box-shadow:0 22px 50px -28px #000,0 0 40px -16px oklch(.8 .14 var(--h)/.6);}
-        .mix-glow{position:absolute;width:160px;height:160px;right:-50px;top:-60px;border-radius:50%;
-          background:radial-gradient(circle,oklch(.75 .16 var(--h)/.5),transparent 65%);
-          filter:blur(14px);opacity:.55;transition:opacity .25s;}
-        .mix-card:hover .mix-glow{opacity:.9;}
+        .mix-card:hover{transform:translateY(-3px);border-color:oklch(.8 .14 var(--h)/.6);}
+        /* radial gradient gives the soft hue without a GPU blur filter */
+        .mix-glow{position:absolute;width:200px;height:200px;right:-60px;top:-80px;border-radius:50%;
+          background:radial-gradient(circle,oklch(.75 .16 var(--h)/.4),transparent 60%);opacity:.6;transition:opacity .25s;}
+        .mix-card:hover .mix-glow{opacity:.95;}
         .mix-top{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;}
         .mix-code{font-size:21px;letter-spacing:.02em;color:var(--ink);
           text-shadow:0 0 22px oklch(.8 .14 var(--h)/.45);}

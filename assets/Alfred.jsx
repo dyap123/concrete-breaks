@@ -116,7 +116,7 @@ function AlfredPalette({ open, onClose, commands }) {
           align-items:flex-start;padding-top:13vh;background:rgba(4,7,18,.62);
           backdrop-filter:blur(4px);animation:fadeUp .2s both;}
         .alf-panel{width:min(620px,92vw);max-height:64vh;display:flex;flex-direction:column;
-          border-radius:var(--r-lg);border-color:var(--line-strong);box-shadow:var(--shadow),0 0 60px -28px var(--glow-cyan);overflow:hidden;}
+          border-radius:var(--r-lg);border-color:var(--line-strong);box-shadow:var(--shadow);overflow:hidden;}
         .alf-search{display:flex;align-items:center;gap:11px;padding:15px 16px;border-bottom:1px solid var(--line);}
         .alf-orb-mini{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;
           background:conic-gradient(from 0deg,var(--cyan),var(--violet),var(--magenta),var(--cyan));}

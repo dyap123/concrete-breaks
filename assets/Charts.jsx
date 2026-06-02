@@ -15,20 +15,8 @@ if (window.Chart) {
   Chart.defaults.plugins.tooltip.borderWidth = 1;
   Chart.defaults.plugins.tooltip.padding = 10;
   Chart.defaults.plugins.tooltip.cornerRadius = 8;
-  // soft glow behind every dataset (bars + lines) for depth
-  Chart.register({
-    id: 'glow',
-    beforeDatasetDraw(chart, args) {
-      const ds = chart.data.datasets[args.index] || {};
-      const type = args.meta.type;
-      let col = ds.borderColor;
-      if (typeof col !== 'string') col = type === 'bar' ? 'rgba(150,190,255,.5)' : 'rgba(120,170,255,.5)';
-      const lite = document.documentElement.classList.contains('perf-lite');
-      const ctx = chart.ctx; ctx.save();
-      ctx.shadowColor = col; ctx.shadowBlur = lite ? 0 : (type === 'line' ? 16 : 13); ctx.shadowOffsetY = type === 'bar' ? 2 : 0;
-    },
-    afterDatasetDraw(chart) { chart.ctx.restore(); },
-  });
+  // (No canvas shadowBlur glow — it's GPU-expensive. Depth comes from the cheap
+  //  gradient fills below instead, same idea as the transform-only celebration.)
   // clean dashed design-strength reference line (drawn, NOT a legend entry)
   Chart.register({
     id: 'fcLine',
